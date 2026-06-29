@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuthActions } from '@convex-dev/auth/react'
-import axios from 'axios'
+import { register } from '../store/authStore'
+import { api } from '../lib/api'
 
-type Step = 1 | 2 | 3 | 4
+type Step = 1 | 2 | 3
 
 const TAGS = [
   { label: '🔧 Шукаю майстра',    fill: 'Шукаю майстра для ремонту в квартирі' },
@@ -12,7 +12,7 @@ const TAGS = [
   { label: '👷 Шукаю роботу',     fill: 'Шукаю роботу будівельника, досвід 5 років' },
 ]
 
-const STEP_NAMES = ['WRITE', 'AI', 'REGISTER', 'DONE']
+const STEP_NAMES = ['WRITE', 'AI', 'REGISTER']
 
 interface AIResult {
   category: string
@@ -70,56 +70,19 @@ function quickCategorize(text: string): AIResult {
 // ─── Component ───────────────────────────────────────────────────────────────
 export function Landing() {
   const navigate = useNavigate()
-  const { signIn } = useAuthActions()
   const [step, setStep]           = useState<Step>(1)
   const [authLoading, setAuthLoading] = useState(false)
   const [task, setTask]           = useState('')
   const [focused, setFocused]     = useState(false)
   const [aiResult, setAiResult]   = useState<AIResult | null>(null)
-  const [aiRefining, setAiRefining] = useState(false)  // true while real AI call is in flight
   const [form, setForm]           = useState({ name: '', email: '', password: '', city: '' })
   const [error, setError]         = useState('')
   const textareaRef               = useRef<HTMLTextAreaElement>(null)
-  const debounceRef               = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const pendingRef                = useRef<AbortController | null>(null)
-
-  // ── Background AI while typing (debounced 700ms) ───────────────────────────
-  useEffect(() => {
-    if (task.trim().length < 6) return
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(async () => {
-      if (pendingRef.current) pendingRef.current.abort()
-      const ctrl = new AbortController()
-      pendingRef.current = ctrl
-      try {
-        const [cat, est] = await Promise.all([
-          axios.post('/api/public/categorize', { text: task, city: 'Bratislava' }, { signal: ctrl.signal }),
-          axios.post('/api/public/estimate',   { text: task, city: 'Bratislava' }, { signal: ctrl.signal }),
-        ])
-        setAiResult({
-          category:    cat.data.category,
-          emoji:       ({ electric:'⚡',plumbing:'🔧',renovation:'🏗️',painting:'🎨',tiling:'🪟',carpentry:'🪚',materials:'🪨',labor:'👷',moving:'📦',demolition:'⛏️' } as Record<string,string>)[cat.data.category] ?? '🔨',
-          min:         est.data.min,
-          max:         est.data.max,
-          duration:    est.data.duration,
-          desc:        est.data.basis || task.slice(0, 120),
-          intent_type: cat.data.intent_type,
-          entry_type:  cat.data.entry_type,
-        })
-        setAiRefining(false)
-      } catch { /* aborted or error — keep local result */ }
-    }, 700)
-  }, [task])
 
   // ── Step 1 → 2: instant local result, AI updates in background ────────────
   const goStep2 = () => {
     if (task.trim().length < 5) return
-    // always show instant local categorization first
-    const local = quickCategorize(task)
-    if (!aiResult) {
-      setAiResult(local)
-      setAiRefining(true)   // real AI still in flight
-    }
+    if (!aiResult) setAiResult(quickCategorize(task))
     setStep(2)
   }
 
@@ -131,26 +94,28 @@ export function Landing() {
     setError('')
     setAuthLoading(true)
     try {
-      await signIn('password', {
-        email: form.email,
-        password: form.password,
-        name: form.name,
-        flow: 'signUp',
-      })
-      setStep(4)
-    } catch (err: unknown) {
-      const msg = (err as Error)?.message
-      if (msg?.includes('already exists') || msg?.includes('existing')) {
-        setError('Email вже зареєстрований — увійди через Sign in')
-      } else {
-        setError(msg ?? 'Помилка реєстрації')
+      await register(form.name, form.email, form.password, form.city)
+      // Save the task from step 1 to the database
+      if (task.trim() && aiResult) {
+        await api.post('/entries', {
+          title: task.slice(0, 200),
+          description: task,
+          intent_type: aiResult.intent_type,
+          entry_type: aiResult.entry_type,
+          status: 'open',
+          category: aiResult.category,
+          city: form.city || 'Bratislava',
+          budget_min: aiResult.min,
+          budget_max: aiResult.max,
+        }).catch(() => {})
       }
+      navigate('/app')
+    } catch (err: unknown) {
+      setError((err as Error)?.message ?? 'Помилка реєстрації')
     } finally {
       setAuthLoading(false)
     }
   }
-
-  const goApp = () => navigate('/app')
 
   // ─── Styles ────────────────────────────────────────────────────────────────
   const S = {
@@ -309,14 +274,6 @@ export function Landing() {
           {aiResult && (
             <>
               <div style={{ ...S.card, marginBottom: 16, position: 'relative' as const }}>
-                {/* Refining indicator — subtle, not blocking */}
-                {aiRefining && (
-                  <div style={{ position: 'absolute', top: 14, right: 16, display: 'flex', gap: 3 }}>
-                    {[0, 1, 2].map(i => (
-                      <span key={i} style={{ width: 4, height: 4, borderRadius: '50%', background: '#EF9F27', display: 'inline-block', animation: `dotA 1.3s ease-in-out ${i * 0.2}s infinite` }} />
-                    ))}
-                  </div>
-                )}
                 <div style={{ fontSize: 22, fontWeight: 800, color: '#1A1612', marginBottom: 6, letterSpacing: '-.5px' }}>
                   {aiResult.emoji} {aiResult.category} · Братислава
                 </div>
@@ -408,28 +365,6 @@ export function Landing() {
         </div>
       )}
 
-      {/* ═══ STEP 4: DONE ═══ */}
-      {step === 4 && (
-        <div style={{ ...S.wrap, padding: '80px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-          <div style={{ marginBottom: 28, animation: 'hexPulse 2s ease-in-out infinite' }}>
-            <Hex size={80} />
-          </div>
-          <h2 style={{ fontSize: 36, fontWeight: 800, color: '#1A1612', letterSpacing: -1, marginBottom: 16 }}>
-            Твій запис опублікований!
-          </h2>
-          {aiResult && (
-            <div style={{ padding: '16px 24px', borderRadius: 14, background: '#fff', border: '1.5px solid #EDE8DF', marginBottom: 28, display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 18 }}>{aiResult.emoji}</span>
-              <span style={{ fontSize: 15, fontWeight: 600, color: '#1A1612' }}>
-                {aiResult.category} · €{aiResult.min}–{aiResult.max}
-              </span>
-            </div>
-          )}
-          <div style={{ fontSize: 15, color: '#9A8060', marginBottom: 8 }}>🔍 Знаходимо збіг...</div>
-          <div style={{ fontSize: 14, color: '#B4A898', marginBottom: 36 }}>Ми повідомимо коли хтось відгукнеться</div>
-          <button onClick={goApp} style={{ ...S.btnAmber, maxWidth: 360 }}>Відкрити мій список →</button>
-        </div>
-      )}
 
       <style>{`
         @keyframes hexPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.04)} }

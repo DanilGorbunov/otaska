@@ -43,6 +43,11 @@ export function TabBar() {
   const navigate = useNavigate()
   const location = useLocation()
 
+  const openNew = () => {
+    // Pass current location as background so NewEntry renders as overlay
+    navigate('/app/new', { state: { backgroundLocation: location } })
+  }
+
   return (
     <div style={{
       position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
@@ -56,7 +61,7 @@ export function TabBar() {
         if (i === 2) {
           return (
             <div key="fab" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', marginTop: -14 }}
-              onClick={() => navigate('/app/new')}>
+              onClick={openNew}>
               <div style={{
                 width: 50, height: 50, borderRadius: '50%', background: '#111111',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',

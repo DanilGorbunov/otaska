@@ -29,3 +29,23 @@ a {
   0%, 100% { opacity: 1; }
   50% { opacity: .4; }
 }
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+@keyframes slideInLeft {
+  from { transform: translateX(-28%); opacity: 0.6; }
+  to   { transform: translateX(0);   opacity: 1; }
+}
+
+@keyframes slideOutLeft {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-28%); opacity: 0.5; }
+}
+
+@keyframes sheetUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}

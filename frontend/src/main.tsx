@@ -4,6 +4,7 @@ import App from './App'
 import './index.css'
 import { ConvexAuthProvider } from '@convex-dev/auth/react'
 import { ConvexReactClient } from 'convex/react'
+import { AppProvider } from './store/appStore'
 
 const convexUrl = import.meta.env.VITE_CONVEX_URL as string | undefined
 
@@ -32,7 +33,9 @@ if (!convexUrl) {
   ReactDOM.createRoot(root).render(
     <React.StrictMode>
       <ConvexAuthProvider client={convex}>
-        <App />
+        <AppProvider>
+          <App />
+        </AppProvider>
       </ConvexAuthProvider>
     </React.StrictMode>
   )

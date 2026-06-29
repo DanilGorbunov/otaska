@@ -1,24 +1,30 @@
-import { useEffect, useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { browseApi } from '../lib/api'
 import type { Entry } from '../types'
 import { IntentBadge } from '../components/ui/IntentBadge'
+import { MOCK_BROWSE_ENTRIES } from '../lib/mockData'
+import { BellButton } from '../components/layout/NavBar'
 
 const categories = ['Всі', 'Електрика', 'Сантехніка', 'Ремонт', 'Фарбування', 'Плитка', 'Теслярство', 'Матеріали', 'Переїзд']
 
+const CAT_MAP: Record<string, string> = {
+  'Електрика': 'electric', 'Сантехніка': 'plumbing', 'Ремонт': 'renovation',
+  'Фарбування': 'painting', 'Плитка': 'tiling', 'Теслярство': 'carpentry',
+  'Матеріали': 'materials', 'Переїзд': 'moving',
+}
+
 export function Browse() {
   const navigate = useNavigate()
-  const [entries, setEntries] = useState<Entry[]>([])
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('Всі')
-  const [loading, setLoading] = useState(true)
+  const loading = false
 
-  useEffect(() => {
-    setLoading(true)
-    const params: Record<string, string> = {}
-    if (search) params.search = search
-    if (category !== 'Всі') params.category = category.toLowerCase()
-    browseApi.entries(params).then(r => setEntries(r.data)).finally(() => setLoading(false))
+  const entries = useMemo<Entry[]>(() => {
+    return MOCK_BROWSE_ENTRIES.filter(e => {
+      const matchCat = category === 'Всі' || e.category === CAT_MAP[category]
+      const matchSearch = !search || e.title.toLowerCase().includes(search.toLowerCase())
+      return matchCat && matchSearch
+    })
   }, [search, category])
 
   return (
@@ -29,14 +35,13 @@ export function Browse() {
         background: 'rgba(242,242,247,.94)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
         borderBottom: '0.5px solid rgba(60,60,67,.18)',
       }}>
-        <div style={{ height: 44, display: 'flex', alignItems: 'center', padding: '0 16px' }}>
-          <h2 style={{ fontSize: 17, fontWeight: 600, margin: 0 }}>Знайти</h2>
+        <div style={{ height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px', position: 'relative' }}>
+          <span style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-.3px' }}>Знайти</span>
+          <div style={{ position: 'absolute', right: 8 }}><BellButton /></div>
         </div>
       </div>
 
       <div style={{ padding: '16px 16px 0' }}>
-        <h1 style={{ fontSize: 34, fontWeight: 700, letterSpacing: '-.5px', margin: '0 0 12px' }}>Знайти</h1>
-
         {/* Search */}
         <div style={{ position: 'relative', marginBottom: 12 }}>
           <svg style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}

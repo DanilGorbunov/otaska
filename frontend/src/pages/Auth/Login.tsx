@@ -1,11 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuthActions } from '@convex-dev/auth/react'
+import { login } from '../../store/authStore'
 import { Logo } from '../../components/layout/Logo'
 
 export function Login() {
   const navigate = useNavigate()
-  const { signIn } = useAuthActions()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -16,10 +15,10 @@ export function Login() {
     setError('')
     setLoading(true)
     try {
-      await signIn('password', { email, password, flow: 'signIn' })
+      await login(email, password)
       navigate('/app')
-    } catch {
-      setError('Невірний email або пароль')
+    } catch (err: unknown) {
+      setError((err as Error)?.message ?? 'Помилка входу')
     } finally {
       setLoading(false)
     }
@@ -46,7 +45,9 @@ export function Login() {
             <input
               type="email" value={email} onChange={e => setEmail(e.target.value)}
               required placeholder="your@email.com"
-              style={{ width: '100%', padding: '13px 14px', borderRadius: 12, border: '1px solid #E5E5EA', fontSize: 17, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+              style={{ width: '100%', padding: '13px 14px', borderRadius: 12, border: '1px solid #E5E5EA', fontSize: 17, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' as const }}
+              onFocus={e => { e.currentTarget.style.borderColor = '#111' }}
+              onBlur={e => { e.currentTarget.style.borderColor = '#E5E5EA' }}
             />
           </div>
           <div style={{ marginBottom: 20 }}>
@@ -54,7 +55,9 @@ export function Login() {
             <input
               type="password" value={password} onChange={e => setPassword(e.target.value)}
               required placeholder="••••••••"
-              style={{ width: '100%', padding: '13px 14px', borderRadius: 12, border: '1px solid #E5E5EA', fontSize: 17, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+              style={{ width: '100%', padding: '13px 14px', borderRadius: 12, border: '1px solid #E5E5EA', fontSize: 17, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' as const }}
+              onFocus={e => { e.currentTarget.style.borderColor = '#111' }}
+              onBlur={e => { e.currentTarget.style.borderColor = '#E5E5EA' }}
             />
           </div>
 

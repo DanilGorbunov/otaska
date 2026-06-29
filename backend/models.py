@@ -5,7 +5,6 @@ from sqlalchemy import (
     ForeignKey, Text, JSON, Enum as SAEnum
 )
 from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import ARRAY
 import enum
 from database import Base
 
@@ -81,7 +80,7 @@ class ProviderProfile(Base):
     id = Column(String, primary_key=True, default=gen_id)
     user_id = Column(String, ForeignKey("users.id"), unique=True, nullable=False)
     bio = Column(Text, nullable=True)
-    skills = Column(ARRAY(String), default=[])
+    skills = Column(JSON, default=[])
     availability = Column(JSON, nullable=True)
     hourly_rate = Column(Numeric(10, 2), nullable=True)
     rating = Column(Numeric(3, 2), default=0)
