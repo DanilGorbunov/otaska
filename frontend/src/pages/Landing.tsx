@@ -33,8 +33,10 @@ export function Landing() {
   const [task, setTask]         = useState('')
   const [focused, setFocused]   = useState(false)
   const [form, setForm]         = useState({ name: '', email: '', password: '', city: '' })
+  const [regStep, setRegStep]   = useState(0) // 0=name, 1=email, 2=password
   const [error, setError]       = useState('')
   const [authLoading, setAuthLoading] = useState(false)
+  const regInputRef             = useRef<HTMLInputElement>(null)
   const textareaRef             = useRef<HTMLTextAreaElement>(null)
   const chatBottomRef           = useRef<HTMLDivElement>(null)
 
@@ -313,7 +315,7 @@ export function Landing() {
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#1A1612', marginBottom: 4 }}>{aiResult.title}</div>
                 <div style={{ fontSize: 14, color: '#9A8060', marginBottom: 12 }}>{aiResult.details}</div>
                 <div style={{ fontSize: 28, fontWeight: 800, color: '#EF9F27' }}>€{aiResult.budgetMin} — €{aiResult.budgetMax}</div>
-                <button onClick={() => setStep(3)} style={{ ...S.btnAmber, marginTop: 16 }}>
+                <button onClick={() => { setRegStep(0); setError(''); setStep(3) }} style={{ ...S.btnAmber, marginTop: 16 }}>
                   Далі — реєстрація →
                 </button>
               </div>
@@ -357,67 +359,86 @@ export function Landing() {
         </div>
       )}
 
-      {/* ═══ STEP 3: REGISTER ═══ */}
-      {step === 3 && (
-        <div style={{ ...S.wrap, padding: '40px 20px 80px' }}>
-          <button onClick={() => setStep(2)} style={S.back}><BackArrow /> Назад</button>
-          <h2 style={{ fontSize: 32, fontWeight: 800, color: '#1A1612', letterSpacing: -1, marginBottom: 8 }}>Майже готово</h2>
-          <p style={{ fontSize: 15, color: '#9A8060', marginBottom: 32 }}>Ще один крок — і твій запис буде опублікований</p>
+      {/* ═══ STEP 3: REGISTER (one field at a time) ═══ */}
+      {step === 3 && (() => {
+        const REG_FIELDS = [
+          { key: 'name',     question: "Як тебе звати?",        type: 'text',     placeholder: "Ім'я", autoComplete: 'name' },
+          { key: 'email',    question: 'Твій email?',           type: 'email',    placeholder: 'your@email.com', autoComplete: 'email' },
+          { key: 'password', question: 'Придумай пароль',       type: 'password', placeholder: 'мін. 8 символів', autoComplete: 'new-password' },
+        ]
+        const field = REG_FIELDS[regStep]
+        const isLast = regStep === REG_FIELDS.length - 1
 
-          <form onSubmit={e => { e.preventDefault(); handleRegister() }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        const goNext = () => {
+          const val = form[field.key as keyof typeof form]
+          if (!val.trim()) { setError('Заповни поле'); return }
+          if (field.key === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) { setError('Невірний email'); return }
+          if (field.key === 'password' && val.length < 8) { setError('Мінімум 8 символів'); return }
+          setError('')
+          if (isLast) { handleRegister() } else { setRegStep(r => r + 1); setTimeout(() => regInputRef.current?.focus(), 50) }
+        }
+
+        return (
+          <div style={{ ...S.wrap, padding: '0 20px', minHeight: 'calc(100dvh - 57px)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            {/* Progress dots */}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 48 }}>
+              {REG_FIELDS.map((_, i) => (
+                <div key={i} style={{ height: 3, borderRadius: 99, background: i <= regStep ? '#EF9F27' : '#EDE8DF', flex: i === regStep ? 2 : 1, transition: 'all .3s' }} />
+              ))}
+            </div>
+
+            {/* AI result badge */}
             {aiResult && (
-              <div style={{ padding: '14px 18px', borderRadius: 12, background: '#FEF6E8', border: '1px solid #F5D99A', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 20 }}>{aiResult.emoji}</span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#8A6020' }}>
-                  {aiResult.category} · €{aiResult.budgetMin}–{aiResult.budgetMax}
-                </span>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 20, background: '#FEF6E8', border: '1px solid #F5D99A', marginBottom: 32, alignSelf: 'flex-start' }}>
+                <span style={{ fontSize: 16 }}>{aiResult.emoji}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#8A6020' }}>{aiResult.category} · €{aiResult.budgetMin}–{aiResult.budgetMax}</span>
               </div>
             )}
 
-            {[
-              { key: 'name',     label: "Ім'я",   type: 'text',     placeholder: "Ваше ім'я" },
-              { key: 'email',    label: 'Email',  type: 'email',    placeholder: 'your@email.com' },
-              { key: 'password', label: 'Пароль', type: 'password', placeholder: '••••••• (мін. 8 символів)' },
-              { key: 'city',     label: 'Місто',  type: 'text',     placeholder: 'Bratislava' },
-            ].map(f => (
-              <div key={f.key}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#9A8060', marginBottom: 6 }}>{f.label}</label>
-                <input
-                  type={f.type}
-                  value={form[f.key as keyof typeof form]}
-                  onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
-                  placeholder={f.placeholder}
-                  autoComplete={f.type === 'password' ? 'new-password' : f.type === 'email' ? 'email' : f.key === 'name' ? 'name' : undefined}
-                  style={S.inputEl}
-                  onFocus={e => { e.currentTarget.style.borderColor = '#EF9F27'; e.currentTarget.style.boxShadow = '0 0 0 4px rgba(239,159,39,.1)' }}
-                  onBlur={e => { e.currentTarget.style.borderColor = '#EDE8DF'; e.currentTarget.style.boxShadow = 'none' }}
-                />
-              </div>
-            ))}
+            {/* Question */}
+            <h2 style={{ fontSize: 34, fontWeight: 800, color: '#1A1612', letterSpacing: -1, marginBottom: 24, lineHeight: 1.1 }}>
+              {field.question}
+            </h2>
 
-            {error && (
-              <div style={{ padding: '12px 16px', borderRadius: 10, background: '#FEF2F2', border: '1px solid #FECACA' }}>
-                <span style={{ fontSize: 14, color: '#DC2626' }}>{error}</span>
-              </div>
-            )}
+            {/* Input */}
+            <form onSubmit={e => { e.preventDefault(); goNext() }}>
+              <input
+                ref={regInputRef}
+                key={field.key}
+                type={field.type}
+                value={form[field.key as keyof typeof form]}
+                onChange={e => { setForm(p => ({ ...p, [field.key]: e.target.value })); setError('') }}
+                placeholder={field.placeholder}
+                autoComplete={field.autoComplete}
+                autoFocus
+                style={{ ...S.inputEl, fontSize: 20, padding: '18px 20px', marginBottom: 8 }}
+                onFocus={e => { e.currentTarget.style.borderColor = '#EF9F27'; e.currentTarget.style.boxShadow = '0 0 0 4px rgba(239,159,39,.1)' }}
+                onBlur={e => { e.currentTarget.style.borderColor = '#EDE8DF'; e.currentTarget.style.boxShadow = 'none' }}
+              />
 
-            <button type="submit" disabled={authLoading}
-              style={{ ...S.btnAmber, opacity: authLoading ? 0.7 : 1 }}>
-              {authLoading ? 'Публікуємо...' : 'Опублікувати запис →'}
-            </button>
+              {error && <p style={{ fontSize: 13, color: '#DC2626', marginBottom: 16 }}>{error}</p>}
 
-            <p style={{ fontSize: 12, color: '#B4A898', textAlign: 'center' }}>
-              Реєструючись ти погоджуєшся з <a href="#" style={{ color: '#EF9F27', fontWeight: 500 }}>умовами використання</a>
-            </p>
-            <p style={{ fontSize: 14, color: '#9A8060', textAlign: 'center' }}>
-              Вже є акаунт?{' '}
-              <button type="button" onClick={() => navigate('/login')} style={{ color: '#EF9F27', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'system-ui', fontSize: 14 }}>
-                Увійти
+              <button type="submit" disabled={authLoading} style={{ ...S.btnAmber, fontSize: 17, padding: 18, marginTop: 8, opacity: authLoading ? 0.7 : 1 }}>
+                {authLoading ? 'Публікуємо...' : isLast ? 'Опублікувати запис →' : 'Далі →'}
               </button>
+            </form>
+
+            {/* Back + login */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 24 }}>
+              <button onClick={() => regStep > 0 ? setRegStep(r => r - 1) : setStep(2)} style={{ fontSize: 14, color: '#9A8060', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'system-ui', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <BackArrow /> Назад
+              </button>
+              <button onClick={() => navigate('/login')} style={{ fontSize: 14, color: '#EF9F27', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'system-ui' }}>
+                Вже є акаунт
+              </button>
+            </div>
+
+            <p style={{ fontSize: 12, color: '#B4A898', textAlign: 'center', marginTop: 20 }}>
+              Реєструючись ти погоджуєшся з <a href="#" style={{ color: '#EF9F27' }}>умовами використання</a>
             </p>
-          </form>
-        </div>
-      )}
+          </div>
+        )
+      })()}
 
 
       <style>{`
