@@ -45,7 +45,24 @@ export function Landing() {
   const [chips, setChips]       = useState<string[]>([])
   const [chatInput, setChatInput] = useState('')
   const [chatLoading, setChatLoading] = useState(false)
-  const [aiResult, setAiResult] = useState<AIResult | null>(null)
+  const [aiResult, setAiResult]           = useState<AIResult | null>(null)
+  const [secondAiResult, setSecondAiResult] = useState<AIResult | null>(null)
+  const [askGoalStep, setAskGoalStep]     = useState(false)
+  const [secondGoalMode, setSecondGoalMode] = useState(false)
+
+  const REG_QUESTIONS = [
+    { key: 'name',     question: 'Як тебе звати?',                      type: 'text',     placeholder: "Ім'я" },
+    { key: 'email',    question: 'Твій email?',                         type: 'email',    placeholder: 'your@email.com' },
+    { key: 'password', question: 'Придумай пароль (мін. 8 символів)',   type: 'password', placeholder: '••••••••' },
+  ]
+
+  const startRegFields = () => {
+    setRegMode(true)
+    setRegStep(0)
+    setForm({ name: '', email: '', password: '', city: '' })
+    setMsgs(prev => [...prev, { role: 'assistant', content: REG_QUESTIONS[0].question }])
+    setChips([])
+  }
 
   const sendToAI = async (messages: ChatMsg[]) => {
     setChatLoading(true)
@@ -58,8 +75,18 @@ export function Landing() {
         setChips(parsed.chips ?? [])
       } else if (parsed.type === 'result' && parsed.summary) {
         setChips([])
-        setAiResult(parsed.summary)
-        setTimeout(() => startReg(), 600)
+        if (secondGoalMode) {
+          setSecondAiResult(parsed.summary)
+          setSecondGoalMode(false)
+          setTimeout(() => startRegFields(), 600)
+        } else {
+          setAiResult(parsed.summary)
+          setTimeout(() => {
+            setAskGoalStep(true)
+            setChips(['Так, додам ще одну', 'Ні, все готово'])
+            setMsgs(prev => [...prev, { role: 'assistant', content: 'Хочеш додати ще одну ціль?' }])
+          }, 600)
+        }
       }
     } catch {
       setMsgs(prev => [...prev, { role: 'assistant', content: 'Щось пішло не так. Спробуй ще раз.' }])
@@ -80,30 +107,29 @@ export function Landing() {
 
   const sendUserMessage = async (text: string) => {
     if (!text.trim() || chatLoading) return
-    const newMsgs: ChatMsg[] = [...msgs, { role: 'user', content: text }]
-    setMsgs(newMsgs)
+    setMsgs(prev => [...prev, { role: 'user', content: text }])
     setChips([])
     setChatInput('')
+
+    if (askGoalStep) {
+      setAskGoalStep(false)
+      const yes = text.toLowerCase().includes('так') || text.toLowerCase().includes('додам')
+      if (yes) {
+        setSecondGoalMode(true)
+        setTimeout(() => setMsgs(prev => [...prev, { role: 'assistant', content: 'Опиши другу ціль' }]), 300)
+      } else {
+        setTimeout(() => startRegFields(), 300)
+      }
+      return
+    }
+
+    const newMsgs: ChatMsg[] = [...msgs, { role: 'user', content: text }]
     await sendToAI(newMsgs)
   }
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [msgs])
-
-  const REG_QUESTIONS = [
-    { key: 'name',     question: 'Як тебе звати?',   type: 'text',     placeholder: "Ім'я" },
-    { key: 'email',    question: 'Твій email?',      type: 'email',    placeholder: 'your@email.com' },
-    { key: 'password', question: 'Придумай пароль (мін. 8 символів)', type: 'password', placeholder: '••••••••' },
-  ]
-
-  const startReg = () => {
-    setRegMode(true)
-    setRegStep(0)
-    setForm({ name: '', email: '', password: '', city: '' })
-    setMsgs(prev => [...prev, { role: 'assistant', content: REG_QUESTIONS[0].question }])
-    setChips([])
-  }
 
   const handleRegInput = async () => {
     const field = REG_QUESTIONS[regStep]
@@ -349,17 +375,20 @@ export function Landing() {
               </div>
             )}
 
-            {/* Result card — compact, no button */}
-            {aiResult && (
-              <div style={{ background: '#fff', border: '2px solid #EF9F27', borderRadius: 16, padding: '14px 18px', marginBottom: 12, boxShadow: '0 4px 20px rgba(239,159,39,.12)', display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontSize: 22 }}>{aiResult.emoji}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: '#1A1612' }}>{aiResult.title}</div>
-                  <div style={{ fontSize: 13, color: '#9A8060' }}>{aiResult.details}</div>
+            {/* Goal cards */}
+            {[aiResult, secondAiResult].filter(Boolean).map((r, i) => r && (
+              <div key={i} style={{ background: '#fff', border: '2px solid #EF9F27', borderRadius: 16, padding: '12px 16px', marginBottom: 10, boxShadow: '0 4px 20px rgba(239,159,39,.12)' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, color: '#B4924A', textTransform: 'uppercase', marginBottom: 6 }}>Ціль {secondAiResult ? i + 1 : ''}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 20 }}>{r.emoji}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: '#1A1612' }}>{r.title}</div>
+                    <div style={{ fontSize: 12, color: '#9A8060' }}>{r.details}</div>
+                  </div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: '#EF9F27', whiteSpace: 'nowrap' }}>€{r.budgetMin}–{r.budgetMax}</div>
                 </div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#EF9F27', whiteSpace: 'nowrap' }}>€{aiResult.budgetMin}–{aiResult.budgetMax}</div>
               </div>
-            )}
+            ))}
 
             <div ref={chatBottomRef} />
           </div>
