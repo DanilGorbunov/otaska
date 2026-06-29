@@ -56,7 +56,9 @@ const SYSTEM_PROMPT = `Ти — AI-помічник платформи OTaska (�
 }
 
 intentType: seeking_service | offering_service | seeking_material | seeking_job
-entryType: on_demand | project | material`
+entryType: on_demand | project | material
+
+ВАЖЛИВО: Завжди повертай відповідь виключно у форматі JSON. Ніякого тексту поза JSON.`
 
 export const chat = action({
   args: {
