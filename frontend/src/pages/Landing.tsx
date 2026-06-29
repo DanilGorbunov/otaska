@@ -84,7 +84,6 @@ export function Landing() {
           setTimeout(() => {
             setAskGoalStep(true)
             setChips(['Так, додам ще одну', 'Ні, все готово'])
-            setMsgs(prev => [...prev, { role: 'assistant', content: 'Хочеш додати ще одну ціль?' }])
           }, 600)
         }
       }
@@ -390,11 +389,23 @@ export function Landing() {
               </div>
             ))}
 
+            {/* "Add another goal?" appears after the card */}
+            {askGoalStep && (
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 12 }}>
+                <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#EF9F27', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <span style={{ fontSize: 14 }}>✦</span>
+                </div>
+                <div style={{ padding: '12px 16px', borderRadius: '18px 18px 18px 4px', background: '#fff', border: '1.5px solid #EDE8DF', fontSize: 15 }}>
+                  Хочеш додати ще одну ціль?
+                </div>
+              </div>
+            )}
+
             <div ref={chatBottomRef} />
           </div>
 
           {/* Input area */}
-          {(!aiResult || regMode) && (
+          {(!aiResult || regMode || askGoalStep || secondGoalMode) && (
             <div style={{ padding: '12px 16px 20px', background: '#F5F4F1', borderTop: '1px solid #EDE8DF' }}>
               {!regMode && chips.length > 0 && (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const, marginBottom: 10 }}>
