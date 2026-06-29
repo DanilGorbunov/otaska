@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { NavBar } from '../components/layout/NavBar'
-import { getSession, logout } from '../store/authStore'
+import { useAuthActions } from '@convex-dev/auth/react'
 import { MOCK_USER } from '../lib/mockData'
 
 const MOCK_SKILLS = ['Електрика', 'Монтаж', 'Ремонт', 'Сантехніка']
@@ -17,8 +17,8 @@ function StarIcon({ filled }: { filled: boolean }) {
 
 export function Profile() {
   const navigate = useNavigate()
-  const session = getSession()
-  const user = session ?? MOCK_USER
+  const { signOut } = useAuthActions()
+  const user = MOCK_USER
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState({
     name: user.name,
@@ -197,7 +197,7 @@ export function Profile() {
           ))}
         </div>
 
-        <button onClick={() => { logout(); navigate('/') }} style={{
+        <button onClick={() => signOut().then(() => navigate('/'))} style={{
           width: '100%', padding: 16, borderRadius: 16, border: 'none', cursor: 'pointer',
           background: 'rgba(255,59,48,.08)', color: '#FF3B30', fontSize: 17, fontWeight: 600,
           fontFamily: 'inherit',
