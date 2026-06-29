@@ -265,7 +265,7 @@ export function Landing() {
 
       {/* ═══ STEP 2: AI CHAT ═══ */}
       {step === 2 && (
-        <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100dvh - 57px)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100dvh - 57px)', maxWidth: 640, margin: '0 auto', width: '100%' }}>
           {/* Chat messages */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '20px 16px 0' }}>
             <button onClick={() => setStep(1)} style={S.back}><BackArrow /> Назад</button>
