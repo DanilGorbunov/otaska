@@ -171,7 +171,7 @@ export function Landing() {
       <nav style={S.nav}>
         <div style={S.navInner}>
           <a href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
-            <QuestionMark />
+            <Hex size={28} />
             <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-.3px' }}>
               <span style={{ color: '#EF9F27', fontWeight: 800 }}>O</span>
               <span style={{ color: '#1A1612' }}>Taska</span>
