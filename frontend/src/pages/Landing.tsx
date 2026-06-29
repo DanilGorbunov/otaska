@@ -1,10 +1,17 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthActions } from '@convex-dev/auth/react'
-import { useMutation } from 'convex/react'
+import { useMutation, useAction } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 
 type Step = 1 | 2 | 3
+
+interface ChatMsg { role: 'user' | 'assistant'; content: string }
+interface AIResult {
+  emoji: string; category: string; title: string; details: string
+  budgetMin: number; budgetMax: number
+  intentType: string; entryType: string
+}
 
 const TAGS = [
   { label: '🔧 Шукаю майстра',    fill: 'Шукаю майстра для ремонту в квартирі' },
@@ -15,79 +22,71 @@ const TAGS = [
 
 const STEP_NAMES = ['ПИШУ', 'AI', 'РЕЄСТРАЦІЯ']
 
-interface AIResult {
-  category: string
-  emoji: string
-  min: number
-  max: number
-  duration: string
-  desc: string
-  intent_type: string
-  entry_type: string
-}
-
-// ─── Instant local categorization (0 ms, no API) ────────────────────────────
-function quickCategorize(text: string): AIResult {
-  const t = text.toLowerCase()
-
-  let intent_type = 'seeking_service'
-  if (/роблю|пропоную|виконую|доступний|надаю|можу зробити|пропоную послуг/.test(t))
-    intent_type = 'offering_service'
-  else if (/шукаю роботу|потрібна робота|хочу роботу|шукаю посаду|шукаю місце/.test(t))
-    intent_type = 'seeking_job'
-  else if (/матеріал|щебінь|пісок|цемент|купити|де купити/.test(t))
-    intent_type = 'seeking_material'
-
-  const cats: Array<[string, string, RegExp, number, number, string]> = [
-    ['Електрика',    '⚡', /електр/,                          80,  300, '2–6 год'],
-    ['Сантехніка',   '🔧', /сантехн|труб|вода|кран|каналіз/,  60,  250, '1–4 год'],
-    ['Ремонт',       '🏗️', /ремонт|оздоблен|штукатур|буд/,  500, 3000, '3–30 днів'],
-    ['Фарбування',   '🎨', /фарб|покраска|фасад/,            100,  800, '1–5 днів'],
-    ['Плитка',       '🪟', /плитк|кахель/,                   200, 1000, '2–7 днів'],
-    ['Теслярство',   '🪚', /тесляр|меблі|дерево|столяр/,     150,  600, '1–5 днів'],
-    ['Матеріали',    '🪨', /матеріал|щебінь|пісок|цемент/,    50,  500, '1–3 дні'],
-    ['Перевезення',  '📦', /вантаж|переїзд|перевезення/,      80,  400, '3–8 год'],
-    ['Демонтаж',     '⛏️', /демонтаж|знос/,                  200,  800, '1–3 дні'],
-    ['Послуга',      '👷', /майстер|виконавець|робітник/,      50,  200, '1–3 дні'],
-  ]
-
-  for (const [cat, emoji, re, min, max, duration] of cats) {
-    if (re.test(t)) {
-      return {
-        category: cat, emoji, min, max, duration,
-        desc: text.slice(0, 100),
-        intent_type, entry_type: 'on_demand',
-      }
-    }
-  }
-
-  return {
-    category: 'Послуга', emoji: '🔨', min: 50, max: 200,
-    duration: '1–3 дні', desc: text.slice(0, 100),
-    intent_type, entry_type: 'on_demand',
-  }
-}
-
 // ─── Component ───────────────────────────────────────────────────────────────
 export function Landing() {
   const navigate = useNavigate()
   const { signIn } = useAuthActions()
   const createAndPublish = useMutation(api.entries.createAndPublish)
-  const [step, setStep]           = useState<Step>(1)
-  const [authLoading, setAuthLoading] = useState(false)
-  const [task, setTask]           = useState('')
-  const [focused, setFocused]     = useState(false)
-  const [aiResult, setAiResult]   = useState<AIResult | null>(null)
-  const [form, setForm]           = useState({ name: '', email: '', password: '', city: '' })
-  const [error, setError]         = useState('')
-  const textareaRef               = useRef<HTMLTextAreaElement>(null)
+  const callAI = useAction(api.ai.chat)
 
-  // ── Step 1 → 2: instant local result, AI updates in background ────────────
+  const [step, setStep]         = useState<Step>(1)
+  const [task, setTask]         = useState('')
+  const [focused, setFocused]   = useState(false)
+  const [form, setForm]         = useState({ name: '', email: '', password: '', city: '' })
+  const [error, setError]       = useState('')
+  const [authLoading, setAuthLoading] = useState(false)
+  const textareaRef             = useRef<HTMLTextAreaElement>(null)
+  const chatBottomRef           = useRef<HTMLDivElement>(null)
+
+  // Chat state
+  const [msgs, setMsgs]         = useState<ChatMsg[]>([])
+  const [chips, setChips]       = useState<string[]>([])
+  const [chatInput, setChatInput] = useState('')
+  const [chatLoading, setChatLoading] = useState(false)
+  const [aiResult, setAiResult] = useState<AIResult | null>(null)
+
+  const sendToAI = async (messages: ChatMsg[]) => {
+    setChatLoading(true)
+    try {
+      const raw = await callAI({ messages })
+      const parsed = JSON.parse(raw as string)
+      const assistantMsg: ChatMsg = { role: 'assistant', content: parsed.message }
+      setMsgs(prev => [...prev, assistantMsg])
+      if (parsed.type === 'question') {
+        setChips(parsed.chips ?? [])
+      } else if (parsed.type === 'result' && parsed.summary) {
+        setChips([])
+        setAiResult(parsed.summary)
+      }
+    } catch {
+      setMsgs(prev => [...prev, { role: 'assistant', content: 'Щось пішло не так. Спробуй ще раз.' }])
+    } finally {
+      setChatLoading(false)
+    }
+  }
+
   const goStep2 = () => {
     if (task.trim().length < 5) return
-    if (!aiResult) setAiResult(quickCategorize(task))
+    const initialMsgs: ChatMsg[] = [{ role: 'user', content: task }]
+    setMsgs(initialMsgs)
+    setChips([])
+    setAiResult(null)
     setStep(2)
+    sendToAI(initialMsgs)
   }
+
+  const sendUserMessage = async (text: string) => {
+    if (!text.trim() || chatLoading) return
+    const newMsgs: ChatMsg[] = [...msgs, { role: 'user', content: text }]
+    setMsgs(newMsgs)
+    setChips([])
+    setChatInput('')
+    await sendToAI(newMsgs)
+  }
+
+  useEffect(() => {
+    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [msgs])
 
   const handleRegister = async () => {
     if (!form.name || !form.email || !form.password) {
@@ -99,20 +98,20 @@ export function Landing() {
     try {
       await signIn('password', { email: form.email, password: form.password, name: form.name, flow: 'signUp' })
       let newEntryId: string | null = null
-      if (task.trim() && aiResult) {
+      if (task.trim()) {
         const id = await createAndPublish({
-          title: task.slice(0, 200),
+          title: aiResult?.title ?? task.slice(0, 200),
           description: task,
-          intentType: aiResult.intent_type as 'seeking_service' | 'offering_service' | 'seeking_material' | 'seeking_job',
-          entryType: aiResult.entry_type as 'on_demand' | 'project' | 'material',
-          category: aiResult.category,
+          intentType: (aiResult?.intentType ?? 'seeking_service') as 'seeking_service' | 'offering_service' | 'seeking_material' | 'seeking_job',
+          entryType: (aiResult?.entryType ?? 'on_demand') as 'on_demand' | 'project' | 'material',
+          category: aiResult?.category,
           city: form.city || 'Bratislava',
-          budgetMin: aiResult.min,
-          budgetMax: aiResult.max,
+          budgetMin: aiResult?.budgetMin,
+          budgetMax: aiResult?.budgetMax,
         }).catch(() => null)
         newEntryId = id ?? null
       }
-      navigate('/app', { state: { newEntry: newEntryId ? { id: newEntryId, task, aiResult, city: form.city } : null } })
+      navigate('/app', { state: { newEntry: newEntryId ? { id: newEntryId, task, aiResult: aiResult ? { emoji: aiResult.emoji, category: aiResult.category, min: aiResult.budgetMin, max: aiResult.budgetMax, time: aiResult.details } : null, city: form.city } : null } })
     } catch (err: unknown) {
       const msg = (err as Error)?.message ?? ''
       setError(msg.includes('already') ? 'Цей email вже зареєстровано' : 'Помилка реєстрації')
@@ -264,43 +263,96 @@ export function Landing() {
         </div>
       )}
 
-      {/* ═══ STEP 2: AI RESULT ═══ */}
+      {/* ═══ STEP 2: AI CHAT ═══ */}
       {step === 2 && (
-        <div style={{ ...S.wrap, padding: '40px 20px 80px' }}>
-          <button onClick={() => setStep(1)} style={S.back}><BackArrow /> Назад</button>
-          <div style={{ fontSize: 15, fontWeight: 600, color: '#9A8060', marginBottom: 16, letterSpacing: '.3px', textTransform: 'uppercase' as const }}>
-            Схоже ти шукаєш:
+        <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100dvh - 57px)' }}>
+          {/* Chat messages */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '20px 16px 0' }}>
+            <button onClick={() => setStep(1)} style={S.back}><BackArrow /> Назад</button>
+
+            {msgs.map((m, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start', marginBottom: 12 }}>
+                {m.role === 'assistant' && (
+                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#EF9F27', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 8, flexShrink: 0, marginTop: 2 }}>
+                    <span style={{ fontSize: 14 }}>✦</span>
+                  </div>
+                )}
+                <div style={{
+                  maxWidth: '78%',
+                  padding: '12px 16px',
+                  borderRadius: m.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                  background: m.role === 'user' ? '#1A1612' : '#fff',
+                  color: m.role === 'user' ? '#fff' : '#1A1612',
+                  fontSize: 15, lineHeight: 1.5,
+                  border: m.role === 'assistant' ? '1.5px solid #EDE8DF' : 'none',
+                  boxShadow: '0 1px 4px rgba(0,0,0,.06)',
+                }}>
+                  {m.content}
+                </div>
+              </div>
+            ))}
+
+            {/* AI typing indicator */}
+            {chatLoading && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#EF9F27', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ fontSize: 14 }}>✦</span>
+                </div>
+                <div style={{ padding: '12px 16px', borderRadius: '18px 18px 18px 4px', background: '#fff', border: '1.5px solid #EDE8DF', display: 'flex', gap: 4, alignItems: 'center' }}>
+                  {[0, 1, 2].map(i => (
+                    <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF9F27', display: 'inline-block', animation: `dotA 1.3s ease-in-out ${i * 0.2}s infinite` }} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Result card */}
+            {aiResult && (
+              <div style={{ background: '#fff', border: '2px solid #EF9F27', borderRadius: 16, padding: '18px 20px', marginBottom: 12, boxShadow: '0 4px 20px rgba(239,159,39,.12)' }}>
+                <div style={{ fontSize: 22, marginBottom: 4 }}>{aiResult.emoji}</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#1A1612', marginBottom: 4 }}>{aiResult.title}</div>
+                <div style={{ fontSize: 14, color: '#9A8060', marginBottom: 12 }}>{aiResult.details}</div>
+                <div style={{ fontSize: 28, fontWeight: 800, color: '#EF9F27' }}>€{aiResult.budgetMin} — €{aiResult.budgetMax}</div>
+                <button onClick={() => setStep(3)} style={{ ...S.btnAmber, marginTop: 16 }}>
+                  Далі — реєстрація →
+                </button>
+              </div>
+            )}
+
+            <div ref={chatBottomRef} />
           </div>
 
-          {aiResult && (
-            <>
-              <div style={{ ...S.card, marginBottom: 16, position: 'relative' as const }}>
-                <div style={{ fontSize: 22, fontWeight: 800, color: '#1A1612', marginBottom: 6, letterSpacing: '-.5px' }}>
-                  {aiResult.emoji} {aiResult.category} · Братислава
+          {/* Chips + input */}
+          {!aiResult && (
+            <div style={{ padding: '12px 16px 20px', background: '#F5F4F1', borderTop: '1px solid #EDE8DF' }}>
+              {chips.length > 0 && (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const, marginBottom: 10 }}>
+                  {chips.map(c => (
+                    <button key={c} onClick={() => sendUserMessage(c)}
+                      style={{ padding: '8px 16px', borderRadius: 20, background: '#fff', border: '1.5px solid #EDE8DF', fontSize: 14, color: '#1A1612', cursor: 'pointer', fontFamily: 'system-ui', fontWeight: 500 }}
+                      onMouseOver={e => { e.currentTarget.style.borderColor = '#EF9F27'; e.currentTarget.style.color = '#EF9F27' }}
+                      onMouseOut={e => { e.currentTarget.style.borderColor = '#EDE8DF'; e.currentTarget.style.color = '#1A1612' }}
+                    >{c}</button>
+                  ))}
                 </div>
-                <div style={{ fontSize: 15, color: '#9A8060', marginBottom: 24, lineHeight: 1.5 }}>
-                  {aiResult.desc || task.slice(0, 120)}
-                </div>
-                <div style={{ paddingTop: 20, borderTop: '1px solid #EDE8DF' }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#9A8060', textTransform: 'uppercase' as const, letterSpacing: '.8px', marginBottom: 6 }}>
-                    Орієнтовна ціна
-                  </div>
-                  <div style={{ fontSize: 32, fontWeight: 800, color: '#EF9F27', letterSpacing: -1, marginBottom: 4 }}>
-                    €{aiResult.min} — €{aiResult.max}
-                  </div>
-                  <div style={{ fontSize: 14, color: '#B4A898' }}>{aiResult.duration}</div>
-                </div>
+              )}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && sendUserMessage(chatInput)}
+                  placeholder="або напиши свою відповідь..."
+                  style={{ flex: 1, padding: '12px 16px', borderRadius: 12, border: '1.5px solid #EDE8DF', fontSize: 15, outline: 'none', fontFamily: 'inherit', background: '#fff' }}
+                  onFocus={e => { e.currentTarget.style.borderColor = '#EF9F27' }}
+                  onBlur={e => { e.currentTarget.style.borderColor = '#EDE8DF' }}
+                />
+                <button
+                  onClick={() => sendUserMessage(chatInput)}
+                  disabled={!chatInput.trim() || chatLoading}
+                  style={{ padding: '12px 16px', borderRadius: 12, background: '#1A1612', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 18, opacity: !chatInput.trim() || chatLoading ? 0.4 : 1 }}
+                >↑</button>
               </div>
-
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button onClick={() => setStep(3)} style={{ flex: 1, padding: 15, borderRadius: 12, background: '#EF9F27', color: '#1A1612', fontFamily: 'system-ui', fontSize: 16, fontWeight: 700, border: 'none', cursor: 'pointer' }}>
-                  Так, вірно →
-                </button>
-                <button onClick={() => setStep(1)} style={S.btnGhost}>
-                  Уточнити
-                </button>
-              </div>
-            </>
+            </div>
           )}
         </div>
       )}
@@ -317,7 +369,7 @@ export function Landing() {
               <div style={{ padding: '14px 18px', borderRadius: 12, background: '#FEF6E8', border: '1px solid #F5D99A', display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontSize: 20 }}>{aiResult.emoji}</span>
                 <span style={{ fontSize: 13, fontWeight: 600, color: '#8A6020' }}>
-                  {aiResult.category} · €{aiResult.min}–{aiResult.max}
+                  {aiResult.category} · €{aiResult.budgetMin}–{aiResult.budgetMax}
                 </span>
               </div>
             )}
