@@ -333,6 +333,7 @@ export function Landing() {
                   value={form[f.key as keyof typeof form]}
                   onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
                   placeholder={f.placeholder}
+                  autoComplete={f.type === 'password' ? 'new-password' : f.type === 'email' ? 'email' : f.key === 'name' ? 'name' : undefined}
                   style={S.inputEl}
                   onFocus={e => { e.currentTarget.style.borderColor = '#EF9F27'; e.currentTarget.style.boxShadow = '0 0 0 4px rgba(239,159,39,.1)' }}
                   onBlur={e => { e.currentTarget.style.borderColor = '#EDE8DF'; e.currentTarget.style.boxShadow = 'none' }}
