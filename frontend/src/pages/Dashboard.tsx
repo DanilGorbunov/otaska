@@ -1,12 +1,20 @@
 import { useState, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { useQuery } from 'convex/react'
+import { api } from '../../convex/_generated/api'
 import { EntryCard } from '../components/entries/EntryCard'
 import { MOCK_CONVERSATIONS } from '../lib/mockData'
 import { useAppStore } from '../store/appStore'
 
 export function Dashboard() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const newEntry = (location.state as { newEntry?: { id: string; task: string; aiResult: { emoji: string; category: string; min: number; max: number; time: string } | null; city: string } | null })?.newEntry ?? null
   const { entries, projects, loading, deleteEntry } = useAppStore()
+  const similar = useQuery(
+    api.entries.listOpen,
+    newEntry?.aiResult ? { category: newEntry.aiResult.category } : 'skip'
+  )
   const [tab, setTab] = useState<'entries' | 'browse'>('entries')
   const [search, setSearch] = useState('')
   const [swipedId, setSwipedId] = useState<string | null>(null)
@@ -27,6 +35,71 @@ export function Dashboard() {
 
   return (
     <div onClick={() => swipedId && setSwipedId(null)}>
+
+      {/* ── Welcome screen after first registration ── */}
+      {newEntry && (
+        <div style={{ background: '#F5F4F1', minHeight: '100dvh', padding: '24px 16px 100px', fontFamily: 'system-ui,-apple-system,sans-serif' }}>
+          {/* Header */}
+          <div style={{ textAlign: 'center', marginBottom: 32 }}>
+            <div style={{ fontSize: 36, marginBottom: 8 }}>🎉</div>
+            <h1 style={{ fontSize: 26, fontWeight: 800, color: '#1A1612', margin: '0 0 8px', letterSpacing: -0.5 }}>Готово!</h1>
+            <p style={{ fontSize: 15, color: '#9A8060', margin: 0 }}>Твій запис опублікований. Шукаємо виконавців…</p>
+          </div>
+
+          {/* Created task card */}
+          <div style={{ background: '#fff', borderRadius: 16, padding: '18px 20px', border: '2px solid #EF9F27', marginBottom: 24, boxShadow: '0 4px 20px rgba(239,159,39,.15)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <span style={{ fontSize: 22 }}>{newEntry.aiResult?.emoji ?? '📝'}</span>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#EF9F27', textTransform: 'uppercase', letterSpacing: 1 }}>Твій запис</div>
+                <div style={{ fontSize: 13, color: '#9A8060' }}>{newEntry.aiResult?.category} · €{newEntry.aiResult?.min}–{newEntry.aiResult?.max} · {newEntry.aiResult?.time}</div>
+              </div>
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22C55E' }} />
+                <span style={{ fontSize: 11, color: '#22C55E', fontWeight: 600 }}>Активний</span>
+              </div>
+            </div>
+            <p style={{ fontSize: 15, color: '#1A1612', margin: 0, lineHeight: 1.5 }}>{newEntry.task}</p>
+          </div>
+
+          {/* AI suggestions */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
+              Схожі пропозиції в твоєму місті
+            </div>
+            {similar === undefined ? (
+              <div style={{ textAlign: 'center', padding: 24, color: '#B4A898', fontSize: 14 }}>Завантаження…</div>
+            ) : similar.filter(e => e._id !== newEntry.id).slice(0, 4).length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {similar.filter(e => e._id !== newEntry.id).slice(0, 4).map(s => (
+                  <div key={s._id} style={{ background: '#fff', borderRadius: 14, padding: '14px 16px', border: '1.5px solid #EDE8DF' }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1612', marginBottom: 4 }}>{s.title}</div>
+                    <div style={{ fontSize: 12, color: '#9A8060' }}>
+                      {s.city ?? newEntry.city} · {s.budgetMin && s.budgetMax ? `€${s.budgetMin}–${s.budgetMax}` : 'Ціна договірна'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ background: '#fff', borderRadius: 14, padding: '20px 16px', border: '1.5px solid #EDE8DF', textAlign: 'center' }}>
+                <div style={{ fontSize: 28, marginBottom: 8 }}>🔍</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#1A1612', marginBottom: 4 }}>Поки що нових пропозицій немає</div>
+                <div style={{ fontSize: 13, color: '#9A8060' }}>Ти серед перших — виконавці отримають сповіщення</div>
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={() => navigate('/app', { replace: true, state: null })}
+            style={{ width: '100%', padding: 16, borderRadius: 14, background: '#1A1612', color: '#fff', fontSize: 16, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'system-ui' }}
+          >
+            Перейти до кабінету →
+          </button>
+        </div>
+      )}
+
+      {/* ── Main dashboard (hidden when welcome screen shown) ── */}
+      {!newEntry && <>
       {/* Nav */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 60,
@@ -189,6 +262,7 @@ export function Dashboard() {
           )}
         </>
       )}
+      </>}
     </div>
   )
 }

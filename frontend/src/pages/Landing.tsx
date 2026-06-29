@@ -98,8 +98,9 @@ export function Landing() {
     setAuthLoading(true)
     try {
       await signIn('password', { email: form.email, password: form.password, name: form.name, flow: 'signUp' })
+      let newEntryId: string | null = null
       if (task.trim() && aiResult) {
-        await createAndPublish({
+        const id = await createAndPublish({
           title: task.slice(0, 200),
           description: task,
           intentType: aiResult.intent_type as 'seeking_service' | 'offering_service' | 'seeking_material' | 'seeking_job',
@@ -108,9 +109,10 @@ export function Landing() {
           city: form.city || 'Bratislava',
           budgetMin: aiResult.min,
           budgetMax: aiResult.max,
-        }).catch(() => {})
+        }).catch(() => null)
+        newEntryId = id ?? null
       }
-      navigate('/app')
+      navigate('/app', { state: { newEntry: newEntryId ? { id: newEntryId, task, aiResult, city: form.city } : null } })
     } catch (err: unknown) {
       const msg = (err as Error)?.message ?? ''
       setError(msg.includes('already') ? 'Цей email вже зареєстровано' : 'Помилка реєстрації')
