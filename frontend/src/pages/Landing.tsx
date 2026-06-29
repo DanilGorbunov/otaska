@@ -159,25 +159,38 @@ export function Landing() {
     } else {
       // all fields collected → register
       setTimeout(async () => {
-        setMsgs(prev => [...prev, { role: 'assistant', content: 'Публікуємо твій запис…' }])
+        const goalCount = secondAiResult ? 2 : 1
+        setMsgs(prev => [...prev, { role: 'assistant', content: `Публікуємо ${goalCount === 2 ? 'твої цілі' : 'твій запис'}…` }])
         setAuthLoading(true)
         try {
           await signIn('password', { email: updatedForm.email, password: updatedForm.password, name: updatedForm.name, flow: 'signUp' })
-          let newEntryId: string | null = null
-          if (task.trim()) {
-            const id = await createAndPublish({
-              title: aiResult?.title ?? task.slice(0, 200),
-              description: task,
-              intentType: (aiResult?.intentType ?? 'seeking_service') as 'seeking_service' | 'offering_service' | 'seeking_material' | 'seeking_job',
-              entryType: (aiResult?.entryType ?? 'on_demand') as 'on_demand' | 'project' | 'material',
-              category: aiResult?.category,
-              city: updatedForm.city || 'Bratislava',
-              budgetMin: aiResult?.budgetMin,
-              budgetMax: aiResult?.budgetMax,
+          const city = updatedForm.city || 'Bratislava'
+
+          const publishGoal = async (r: AIResult | null, description: string) => {
+            if (!r) return null
+            return createAndPublish({
+              title: r.title ?? description.slice(0, 200),
+              description,
+              intentType: r.intentType as 'seeking_service' | 'offering_service' | 'seeking_material' | 'seeking_job',
+              entryType: r.entryType as 'on_demand' | 'project' | 'material',
+              category: r.category,
+              city,
+              budgetMin: r.budgetMin,
+              budgetMax: r.budgetMax,
             }).catch(() => null)
-            newEntryId = id ?? null
           }
-          navigate('/app', { state: { newEntry: newEntryId ? { id: newEntryId, task, aiResult: aiResult ? { emoji: aiResult.emoji, category: aiResult.category, min: aiResult.budgetMin, max: aiResult.budgetMax, time: aiResult.details } : null, city: updatedForm.city } : null } })
+
+          const [id1, id2] = await Promise.all([
+            publishGoal(aiResult, task),
+            secondAiResult ? publishGoal(secondAiResult, msgs.find(m => m.card?.cardIndex === 1)?.card?.title ?? '') : Promise.resolve(null),
+          ])
+
+          const goals = [
+            aiResult ? { id: id1 as string | null, aiResult: { emoji: aiResult.emoji, category: aiResult.category, title: aiResult.title, min: aiResult.budgetMin, max: aiResult.budgetMax, time: aiResult.details }, task } : null,
+            secondAiResult ? { id: id2 as string | null, aiResult: { emoji: secondAiResult.emoji, category: secondAiResult.category, title: secondAiResult.title, min: secondAiResult.budgetMin, max: secondAiResult.budgetMax, time: secondAiResult.details }, task: secondAiResult.title } : null,
+          ].filter(Boolean)
+
+          navigate('/app', { state: { newRegistration: { goals, city, name: updatedForm.name } } })
         } catch (err: unknown) {
           const msg = (err as Error)?.message ?? ''
           setMsgs(prev => [...prev, { role: 'assistant', content: msg.includes('already') ? 'Цей email вже зареєстровано. Спробуй увійти.' : 'Помилка реєстрації. Спробуй ще раз.' }])
