@@ -1,5 +1,10 @@
 {
   "version": 2,
   "buildCommand": "cd frontend && npm install && npm run vercel-build",
-  "outputDirectory": "dist"
+  "outputDirectory": "dist",
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/index.py" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
 }
