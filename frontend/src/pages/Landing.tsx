@@ -431,26 +431,25 @@ export function Landing() {
                 </div>
               )}
               {error && <p style={{ fontSize: 13, color: '#DC2626', marginBottom: 8 }}>{error}</p>}
-              <div style={{ display: 'flex', gap: 8 }}>
+              <form onSubmit={e => { e.preventDefault(); regMode ? handleRegInput() : sendUserMessage(chatInput) }} style={{ display: 'flex', gap: 8 }}>
                 <input
                   key={regMode ? `reg-${regStep}` : 'chat'}
                   type={regMode ? REG_QUESTIONS[regStep]?.type : 'text'}
                   value={chatInput}
                   onChange={e => { setChatInput(e.target.value); setError('') }}
-                  onKeyDown={e => e.key === 'Enter' && (regMode ? handleRegInput() : sendUserMessage(chatInput))}
                   placeholder={regMode ? REG_QUESTIONS[regStep]?.placeholder : 'або напиши свою відповідь...'}
                   autoFocus={regMode}
-                  autoComplete={regMode && REG_QUESTIONS[regStep]?.key === 'password' ? 'new-password' : regMode && REG_QUESTIONS[regStep]?.key === 'email' ? 'email' : undefined}
+                  autoComplete={regMode && REG_QUESTIONS[regStep]?.key === 'password' ? 'new-password' : regMode && REG_QUESTIONS[regStep]?.key === 'email' ? 'email' : 'off'}
                   style={{ flex: 1, padding: '12px 16px', borderRadius: 12, border: '1.5px solid #EDE8DF', fontSize: 15, outline: 'none', fontFamily: 'inherit', background: '#fff' }}
                   onFocus={e => { e.currentTarget.style.borderColor = '#EF9F27' }}
                   onBlur={e => { e.currentTarget.style.borderColor = '#EDE8DF' }}
                 />
                 <button
-                  onClick={() => regMode ? handleRegInput() : sendUserMessage(chatInput)}
+                  type="submit"
                   disabled={!chatInput.trim() || chatLoading || authLoading}
                   style={{ padding: '12px 16px', borderRadius: 12, background: '#1A1612', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 18, opacity: !chatInput.trim() || chatLoading || authLoading ? 0.4 : 1 }}
                 >↑</button>
-              </div>
+              </form>
             </div>
           )}
         </div>
