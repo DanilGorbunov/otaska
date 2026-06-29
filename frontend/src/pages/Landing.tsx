@@ -4,9 +4,9 @@ import { useAuthActions } from '@convex-dev/auth/react'
 import { useMutation, useAction } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 
-type Step = 1 | 2 | 3
+type Step = 1 | 2
 
-interface ChatMsg { role: 'user' | 'assistant'; content: string }
+interface ChatMsg { role: 'user' | 'assistant'; content: string; isPassword?: boolean }
 interface AIResult {
   emoji: string; category: string; title: string; details: string
   budgetMin: number; budgetMax: number
@@ -33,10 +33,10 @@ export function Landing() {
   const [task, setTask]         = useState('')
   const [focused, setFocused]   = useState(false)
   const [form, setForm]         = useState({ name: '', email: '', password: '', city: '' })
+  const [regMode, setRegMode]   = useState(false)
   const [regStep, setRegStep]   = useState(0) // 0=name, 1=email, 2=password
   const [error, setError]       = useState('')
   const [authLoading, setAuthLoading] = useState(false)
-  const regInputRef             = useRef<HTMLInputElement>(null)
   const textareaRef             = useRef<HTMLTextAreaElement>(null)
   const chatBottomRef           = useRef<HTMLDivElement>(null)
 
@@ -90,37 +90,77 @@ export function Landing() {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [msgs])
 
-  const handleRegister = async () => {
-    if (!form.name || !form.email || !form.password) {
-      setError("Заповни ім'я, email і пароль")
-      return
+  const REG_QUESTIONS = [
+    { key: 'name',     question: 'Як тебе звати?',   type: 'text',     placeholder: "Ім'я" },
+    { key: 'email',    question: 'Твій email?',      type: 'email',    placeholder: 'your@email.com' },
+    { key: 'password', question: 'Придумай пароль (мін. 8 символів)', type: 'password', placeholder: '••••••••' },
+  ]
+
+  const startReg = () => {
+    setRegMode(true)
+    setRegStep(0)
+    setForm({ name: '', email: '', password: '', city: '' })
+    setMsgs(prev => [...prev, { role: 'assistant', content: REG_QUESTIONS[0].question }])
+    setChips([])
+  }
+
+  const handleRegInput = async () => {
+    const field = REG_QUESTIONS[regStep]
+    const val = chatInput.trim()
+    if (!val) return
+    if (field.key === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+      setError('Невірний email'); return
+    }
+    if (field.key === 'password' && val.length < 8) {
+      setError('Мінімум 8 символів'); return
     }
     setError('')
-    setAuthLoading(true)
-    try {
-      await signIn('password', { email: form.email, password: form.password, name: form.name, flow: 'signUp' })
-      let newEntryId: string | null = null
-      if (task.trim()) {
-        const id = await createAndPublish({
-          title: aiResult?.title ?? task.slice(0, 200),
-          description: task,
-          intentType: (aiResult?.intentType ?? 'seeking_service') as 'seeking_service' | 'offering_service' | 'seeking_material' | 'seeking_job',
-          entryType: (aiResult?.entryType ?? 'on_demand') as 'on_demand' | 'project' | 'material',
-          category: aiResult?.category,
-          city: form.city || 'Bratislava',
-          budgetMin: aiResult?.budgetMin,
-          budgetMax: aiResult?.budgetMax,
-        }).catch(() => null)
-        newEntryId = id ?? null
-      }
-      navigate('/app', { state: { newEntry: newEntryId ? { id: newEntryId, task, aiResult: aiResult ? { emoji: aiResult.emoji, category: aiResult.category, min: aiResult.budgetMin, max: aiResult.budgetMax, time: aiResult.details } : null, city: form.city } : null } })
-    } catch (err: unknown) {
-      const msg = (err as Error)?.message ?? ''
-      setError(msg.includes('already') ? 'Цей email вже зареєстровано' : 'Помилка реєстрації')
-    } finally {
-      setAuthLoading(false)
+    const displayVal = field.key === 'password' ? '••••••••' : val
+    setMsgs(prev => [...prev, { role: 'user', content: displayVal }])
+    setForm(prev => ({ ...prev, [field.key]: val }))
+    setChatInput('')
+
+    const updatedForm = { ...form, [field.key]: val }
+
+    if (regStep < REG_QUESTIONS.length - 1) {
+      const next = REG_QUESTIONS[regStep + 1]
+      setTimeout(() => {
+        setMsgs(prev => [...prev, { role: 'assistant', content: next.question }])
+        setRegStep(s => s + 1)
+      }, 300)
+    } else {
+      // all fields collected → register
+      setTimeout(async () => {
+        setMsgs(prev => [...prev, { role: 'assistant', content: 'Публікуємо твій запис…' }])
+        setAuthLoading(true)
+        try {
+          await signIn('password', { email: updatedForm.email, password: updatedForm.password, name: updatedForm.name, flow: 'signUp' })
+          let newEntryId: string | null = null
+          if (task.trim()) {
+            const id = await createAndPublish({
+              title: aiResult?.title ?? task.slice(0, 200),
+              description: task,
+              intentType: (aiResult?.intentType ?? 'seeking_service') as 'seeking_service' | 'offering_service' | 'seeking_material' | 'seeking_job',
+              entryType: (aiResult?.entryType ?? 'on_demand') as 'on_demand' | 'project' | 'material',
+              category: aiResult?.category,
+              city: updatedForm.city || 'Bratislava',
+              budgetMin: aiResult?.budgetMin,
+              budgetMax: aiResult?.budgetMax,
+            }).catch(() => null)
+            newEntryId = id ?? null
+          }
+          navigate('/app', { state: { newEntry: newEntryId ? { id: newEntryId, task, aiResult: aiResult ? { emoji: aiResult.emoji, category: aiResult.category, min: aiResult.budgetMin, max: aiResult.budgetMax, time: aiResult.details } : null, city: updatedForm.city } : null } })
+        } catch (err: unknown) {
+          const msg = (err as Error)?.message ?? ''
+          setMsgs(prev => [...prev, { role: 'assistant', content: msg.includes('already') ? 'Цей email вже зареєстровано. Спробуй увійти.' : 'Помилка реєстрації. Спробуй ще раз.' }])
+          setRegMode(false)
+        } finally {
+          setAuthLoading(false)
+        }
+      }, 300)
     }
   }
+
 
   // ─── Styles ────────────────────────────────────────────────────────────────
   const S = {
@@ -315,7 +355,7 @@ export function Landing() {
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#1A1612', marginBottom: 4 }}>{aiResult.title}</div>
                 <div style={{ fontSize: 14, color: '#9A8060', marginBottom: 12 }}>{aiResult.details}</div>
                 <div style={{ fontSize: 28, fontWeight: 800, color: '#EF9F27' }}>€{aiResult.budgetMin} — €{aiResult.budgetMax}</div>
-                <button onClick={() => { setRegStep(0); setError(''); setStep(3) }} style={{ ...S.btnAmber, marginTop: 16 }}>
+                <button onClick={startReg} style={{ ...S.btnAmber, marginTop: 16 }}>
                   Далі — реєстрація →
                 </button>
               </div>
@@ -324,10 +364,10 @@ export function Landing() {
             <div ref={chatBottomRef} />
           </div>
 
-          {/* Chips + input */}
-          {!aiResult && (
+          {/* Input area */}
+          {(!aiResult || regMode) && (
             <div style={{ padding: '12px 16px 20px', background: '#F5F4F1', borderTop: '1px solid #EDE8DF' }}>
-              {chips.length > 0 && (
+              {!regMode && chips.length > 0 && (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const, marginBottom: 10 }}>
                   {chips.map(c => (
                     <button key={c} onClick={() => sendUserMessage(c)}
@@ -338,20 +378,25 @@ export function Landing() {
                   ))}
                 </div>
               )}
+              {error && <p style={{ fontSize: 13, color: '#DC2626', marginBottom: 8 }}>{error}</p>}
               <div style={{ display: 'flex', gap: 8 }}>
                 <input
+                  key={regMode ? `reg-${regStep}` : 'chat'}
+                  type={regMode ? REG_QUESTIONS[regStep]?.type : 'text'}
                   value={chatInput}
-                  onChange={e => setChatInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && sendUserMessage(chatInput)}
-                  placeholder="або напиши свою відповідь..."
+                  onChange={e => { setChatInput(e.target.value); setError('') }}
+                  onKeyDown={e => e.key === 'Enter' && (regMode ? handleRegInput() : sendUserMessage(chatInput))}
+                  placeholder={regMode ? REG_QUESTIONS[regStep]?.placeholder : 'або напиши свою відповідь...'}
+                  autoFocus={regMode}
+                  autoComplete={regMode && REG_QUESTIONS[regStep]?.key === 'password' ? 'new-password' : regMode && REG_QUESTIONS[regStep]?.key === 'email' ? 'email' : undefined}
                   style={{ flex: 1, padding: '12px 16px', borderRadius: 12, border: '1.5px solid #EDE8DF', fontSize: 15, outline: 'none', fontFamily: 'inherit', background: '#fff' }}
                   onFocus={e => { e.currentTarget.style.borderColor = '#EF9F27' }}
                   onBlur={e => { e.currentTarget.style.borderColor = '#EDE8DF' }}
                 />
                 <button
-                  onClick={() => sendUserMessage(chatInput)}
-                  disabled={!chatInput.trim() || chatLoading}
-                  style={{ padding: '12px 16px', borderRadius: 12, background: '#1A1612', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 18, opacity: !chatInput.trim() || chatLoading ? 0.4 : 1 }}
+                  onClick={() => regMode ? handleRegInput() : sendUserMessage(chatInput)}
+                  disabled={!chatInput.trim() || chatLoading || authLoading}
+                  style={{ padding: '12px 16px', borderRadius: 12, background: '#1A1612', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 18, opacity: !chatInput.trim() || chatLoading || authLoading ? 0.4 : 1 }}
                 >↑</button>
               </div>
             </div>
@@ -359,86 +404,6 @@ export function Landing() {
         </div>
       )}
 
-      {/* ═══ STEP 3: REGISTER (one field at a time) ═══ */}
-      {step === 3 && (() => {
-        const REG_FIELDS = [
-          { key: 'name',     question: "Як тебе звати?",        type: 'text',     placeholder: "Ім'я", autoComplete: 'name' },
-          { key: 'email',    question: 'Твій email?',           type: 'email',    placeholder: 'your@email.com', autoComplete: 'email' },
-          { key: 'password', question: 'Придумай пароль',       type: 'password', placeholder: 'мін. 8 символів', autoComplete: 'new-password' },
-        ]
-        const field = REG_FIELDS[regStep]
-        const isLast = regStep === REG_FIELDS.length - 1
-
-        const goNext = () => {
-          const val = form[field.key as keyof typeof form]
-          if (!val.trim()) { setError('Заповни поле'); return }
-          if (field.key === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) { setError('Невірний email'); return }
-          if (field.key === 'password' && val.length < 8) { setError('Мінімум 8 символів'); return }
-          setError('')
-          if (isLast) { handleRegister() } else { setRegStep(r => r + 1); setTimeout(() => regInputRef.current?.focus(), 50) }
-        }
-
-        return (
-          <div style={{ ...S.wrap, padding: '0 20px', minHeight: 'calc(100dvh - 57px)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            {/* Progress dots */}
-            <div style={{ display: 'flex', gap: 6, marginBottom: 48 }}>
-              {REG_FIELDS.map((_, i) => (
-                <div key={i} style={{ height: 3, borderRadius: 99, background: i <= regStep ? '#EF9F27' : '#EDE8DF', flex: i === regStep ? 2 : 1, transition: 'all .3s' }} />
-              ))}
-            </div>
-
-            {/* AI result badge */}
-            {aiResult && (
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 20, background: '#FEF6E8', border: '1px solid #F5D99A', marginBottom: 32, alignSelf: 'flex-start' }}>
-                <span style={{ fontSize: 16 }}>{aiResult.emoji}</span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#8A6020' }}>{aiResult.category} · €{aiResult.budgetMin}–{aiResult.budgetMax}</span>
-              </div>
-            )}
-
-            {/* Question */}
-            <h2 style={{ fontSize: 34, fontWeight: 800, color: '#1A1612', letterSpacing: -1, marginBottom: 24, lineHeight: 1.1 }}>
-              {field.question}
-            </h2>
-
-            {/* Input */}
-            <form onSubmit={e => { e.preventDefault(); goNext() }}>
-              <input
-                ref={regInputRef}
-                key={field.key}
-                type={field.type}
-                value={form[field.key as keyof typeof form]}
-                onChange={e => { setForm(p => ({ ...p, [field.key]: e.target.value })); setError('') }}
-                placeholder={field.placeholder}
-                autoComplete={field.autoComplete}
-                autoFocus
-                style={{ ...S.inputEl, fontSize: 20, padding: '18px 20px', marginBottom: 8 }}
-                onFocus={e => { e.currentTarget.style.borderColor = '#EF9F27'; e.currentTarget.style.boxShadow = '0 0 0 4px rgba(239,159,39,.1)' }}
-                onBlur={e => { e.currentTarget.style.borderColor = '#EDE8DF'; e.currentTarget.style.boxShadow = 'none' }}
-              />
-
-              {error && <p style={{ fontSize: 13, color: '#DC2626', marginBottom: 16 }}>{error}</p>}
-
-              <button type="submit" disabled={authLoading} style={{ ...S.btnAmber, fontSize: 17, padding: 18, marginTop: 8, opacity: authLoading ? 0.7 : 1 }}>
-                {authLoading ? 'Публікуємо...' : isLast ? 'Опублікувати запис →' : 'Далі →'}
-              </button>
-            </form>
-
-            {/* Back + login */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 24 }}>
-              <button onClick={() => regStep > 0 ? setRegStep(r => r - 1) : setStep(2)} style={{ fontSize: 14, color: '#9A8060', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'system-ui', display: 'flex', alignItems: 'center', gap: 4 }}>
-                <BackArrow /> Назад
-              </button>
-              <button onClick={() => navigate('/login')} style={{ fontSize: 14, color: '#EF9F27', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'system-ui' }}>
-                Вже є акаунт
-              </button>
-            </div>
-
-            <p style={{ fontSize: 12, color: '#B4A898', textAlign: 'center', marginTop: 20 }}>
-              Реєструючись ти погоджуєшся з <a href="#" style={{ color: '#EF9F27' }}>умовами використання</a>
-            </p>
-          </div>
-        )
-      })()}
 
 
       <style>{`
