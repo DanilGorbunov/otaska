@@ -59,6 +59,7 @@ export function Landing() {
       } else if (parsed.type === 'result' && parsed.summary) {
         setChips([])
         setAiResult(parsed.summary)
+        setTimeout(() => startReg(), 600)
       }
     } catch {
       setMsgs(prev => [...prev, { role: 'assistant', content: 'Щось пішло не так. Спробуй ще раз.' }])
@@ -348,16 +349,15 @@ export function Landing() {
               </div>
             )}
 
-            {/* Result card */}
-            {aiResult && !regMode && (
-              <div style={{ background: '#fff', border: '2px solid #EF9F27', borderRadius: 16, padding: '18px 20px', marginBottom: 12, boxShadow: '0 4px 20px rgba(239,159,39,.12)' }}>
-                <div style={{ fontSize: 22, marginBottom: 4 }}>{aiResult.emoji}</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#1A1612', marginBottom: 4 }}>{aiResult.title}</div>
-                <div style={{ fontSize: 14, color: '#9A8060', marginBottom: 12 }}>{aiResult.details}</div>
-                <div style={{ fontSize: 28, fontWeight: 800, color: '#EF9F27' }}>€{aiResult.budgetMin} — €{aiResult.budgetMax}</div>
-                <button onClick={startReg} style={{ ...S.btnAmber, marginTop: 16 }}>
-                  Далі — реєстрація →
-                </button>
+            {/* Result card — compact, no button */}
+            {aiResult && (
+              <div style={{ background: '#fff', border: '2px solid #EF9F27', borderRadius: 16, padding: '14px 18px', marginBottom: 12, boxShadow: '0 4px 20px rgba(239,159,39,.12)', display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: 22 }}>{aiResult.emoji}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: '#1A1612' }}>{aiResult.title}</div>
+                  <div style={{ fontSize: 13, color: '#9A8060' }}>{aiResult.details}</div>
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#EF9F27', whiteSpace: 'nowrap' }}>€{aiResult.budgetMin}–{aiResult.budgetMax}</div>
               </div>
             )}
 
