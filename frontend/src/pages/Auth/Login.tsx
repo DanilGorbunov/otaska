@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { login } from '../../store/authStore'
+import { useAuthActions } from '@convex-dev/auth/react'
 import { Logo } from '../../components/layout/Logo'
 
 export function Login() {
   const navigate = useNavigate()
+  const { signIn } = useAuthActions()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -15,10 +16,10 @@ export function Login() {
     setError('')
     setLoading(true)
     try {
-      await login(email, password)
+      await signIn('password', { email, password, flow: 'signIn' })
       navigate('/app')
-    } catch (err: unknown) {
-      setError((err as Error)?.message ?? 'Помилка входу')
+    } catch {
+      setError('Невірний email або пароль')
     } finally {
       setLoading(false)
     }

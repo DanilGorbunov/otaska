@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { register } from '../store/authStore'
-import { api } from '../lib/api'
+import { useAuthActions } from '@convex-dev/auth/react'
+import { useMutation } from 'convex/react'
+import { api } from '../../convex/_generated/api'
 
 type Step = 1 | 2 | 3
 
@@ -70,6 +71,8 @@ function quickCategorize(text: string): AIResult {
 // ─── Component ───────────────────────────────────────────────────────────────
 export function Landing() {
   const navigate = useNavigate()
+  const { signIn } = useAuthActions()
+  const createAndPublish = useMutation(api.entries.createAndPublish)
   const [step, setStep]           = useState<Step>(1)
   const [authLoading, setAuthLoading] = useState(false)
   const [task, setTask]           = useState('')
@@ -94,24 +97,23 @@ export function Landing() {
     setError('')
     setAuthLoading(true)
     try {
-      await register(form.name, form.email, form.password, form.city)
-      // Save the task from step 1 to the database
+      await signIn('password', { email: form.email, password: form.password, name: form.name, flow: 'signUp' })
       if (task.trim() && aiResult) {
-        await api.post('/entries', {
+        await createAndPublish({
           title: task.slice(0, 200),
           description: task,
-          intent_type: aiResult.intent_type,
-          entry_type: aiResult.entry_type,
-          status: 'open',
+          intentType: aiResult.intent_type as 'seeking_service' | 'offering_service' | 'seeking_material' | 'seeking_job',
+          entryType: aiResult.entry_type as 'on_demand' | 'project' | 'material',
           category: aiResult.category,
           city: form.city || 'Bratislava',
-          budget_min: aiResult.min,
-          budget_max: aiResult.max,
+          budgetMin: aiResult.min,
+          budgetMax: aiResult.max,
         }).catch(() => {})
       }
       navigate('/app')
     } catch (err: unknown) {
-      setError((err as Error)?.message ?? 'Помилка реєстрації')
+      const msg = (err as Error)?.message ?? ''
+      setError(msg.includes('already') ? 'Цей email вже зареєстровано' : 'Помилка реєстрації')
     } finally {
       setAuthLoading(false)
     }
