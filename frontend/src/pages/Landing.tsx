@@ -349,7 +349,7 @@ export function Landing() {
             )}
 
             {/* Result card */}
-            {aiResult && (
+            {aiResult && !regMode && (
               <div style={{ background: '#fff', border: '2px solid #EF9F27', borderRadius: 16, padding: '18px 20px', marginBottom: 12, boxShadow: '0 4px 20px rgba(239,159,39,.12)' }}>
                 <div style={{ fontSize: 22, marginBottom: 4 }}>{aiResult.emoji}</div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#1A1612', marginBottom: 4 }}>{aiResult.title}</div>
