@@ -12,7 +12,7 @@ const TAGS = [
   { label: '👷 Шукаю роботу',     fill: 'Шукаю роботу будівельника, досвід 5 років' },
 ]
 
-const STEP_NAMES = ['WRITE', 'AI', 'REGISTER']
+const STEP_NAMES = ['ПИШУ', 'AI', 'РЕЄСТРАЦІЯ']
 
 interface AIResult {
   category: string
@@ -179,7 +179,7 @@ export function Landing() {
           </a>
           <Dots />
           <button onClick={() => navigate('/login')} style={{ fontSize: 14, fontWeight: 500, color: '#9A8060', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'system-ui' }}>
-            Sign in
+            Увійти
           </button>
         </div>
       </nav>
@@ -191,10 +191,10 @@ export function Landing() {
             <Hex size={64} />
           </div>
           <h1 style={{ fontSize: 'clamp(40px,7vw,72px)', fontWeight: 800, lineHeight: 1.05, letterSpacing: -2, color: '#1A1612', marginBottom: 14 }}>
-            Just write it<br /><span style={{ color: '#EF9F27' }}>down.</span>
+            Просто напиши<br /><span style={{ color: '#EF9F27' }}>задачу.</span>
           </h1>
           <p style={{ fontSize: 17, color: '#9A8060', lineHeight: 1.65, marginBottom: 36, maxWidth: 460 }}>
-            Need something done? Looking for work?<br />Write it like a note — we handle the rest.
+            Потрібно щось зробити? Шукаєш роботу?<br />Напиши як нотатку — ми зробимо решту.
           </p>
 
           <div style={{ width: '100%', marginBottom: 16 }}>
@@ -211,7 +211,7 @@ export function Landing() {
                 onChange={e => { setTask(e.target.value); setAiResult(null) }}
                 onFocus={() => setFocused(true)}
                 onBlur={() => setFocused(false)}
-                placeholder="plumber available Mon–Fri..."
+                placeholder="сантехнік, доступний пн–пт..."
                 rows={4}
                 style={{ width: '100%', fontSize: 18, color: '#1A1612', border: 'none', outline: 'none', resize: 'none', background: 'transparent', lineHeight: 1.55, fontFamily: 'inherit' }}
               />
@@ -242,7 +242,7 @@ export function Landing() {
                     fontFamily: 'system-ui', fontSize: 15, fontWeight: 600, transition: 'all .18s',
                   }}
                 >
-                  Continue →
+                  Далі →
                 </button>
               </div>
             </div>
@@ -266,7 +266,7 @@ export function Landing() {
       {/* ═══ STEP 2: AI RESULT ═══ */}
       {step === 2 && (
         <div style={{ ...S.wrap, padding: '40px 20px 80px' }}>
-          <button onClick={() => setStep(1)} style={S.back}><BackArrow /> Back</button>
+          <button onClick={() => setStep(1)} style={S.back}><BackArrow /> Назад</button>
           <div style={{ fontSize: 15, fontWeight: 600, color: '#9A8060', marginBottom: 16, letterSpacing: '.3px', textTransform: 'uppercase' as const }}>
             Схоже ти шукаєш:
           </div>
@@ -307,7 +307,7 @@ export function Landing() {
       {/* ═══ STEP 3: REGISTER ═══ */}
       {step === 3 && (
         <div style={{ ...S.wrap, padding: '40px 20px 80px' }}>
-          <button onClick={() => setStep(2)} style={S.back}><BackArrow /> Back</button>
+          <button onClick={() => setStep(2)} style={S.back}><BackArrow /> Назад</button>
           <h2 style={{ fontSize: 32, fontWeight: 800, color: '#1A1612', letterSpacing: -1, marginBottom: 8 }}>Майже готово</h2>
           <p style={{ fontSize: 15, color: '#9A8060', marginBottom: 32 }}>Ще один крок — і твій запис буде опублікований</p>
 
