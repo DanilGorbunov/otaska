@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
-import { isLoggedIn } from './store/authStore'
+import { useConvexAuth } from 'convex/react'
 import { AppShell } from './components/layout/AppShell'
 import { Dashboard } from './pages/Dashboard'
 import { Browse } from './pages/Browse'
@@ -14,12 +14,16 @@ import { Login } from './pages/Auth/Login'
 import { Landing } from './pages/Landing'
 
 function GuestOnly({ children }: { children: React.ReactNode }) {
-  if (isLoggedIn()) return <Navigate to="/app" replace />
+  const { isAuthenticated, isLoading } = useConvexAuth()
+  if (isLoading) return null
+  if (isAuthenticated) return <Navigate to="/app" replace />
   return <>{children}</>
 }
 
 function AuthRequired({ children }: { children: React.ReactNode }) {
-  if (!isLoggedIn()) return <Navigate to="/" replace />
+  const { isAuthenticated, isLoading } = useConvexAuth()
+  if (isLoading) return null
+  if (!isAuthenticated) return <Navigate to="/" replace />
   return <>{children}</>
 }
 
