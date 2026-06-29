@@ -187,10 +187,7 @@ export function Landing() {
       {/* ═══ STEP 1: WRITE ═══ */}
       {step === 1 && (
         <div style={{ ...S.wrap, padding: '60px 20px 80px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-          <div style={{ marginBottom: 28, animation: 'hexPulse 2.5s ease-in-out infinite' }}>
-            <Hex size={64} />
-          </div>
-          <h1 style={{ fontSize: 'clamp(40px,7vw,72px)', fontWeight: 800, lineHeight: 1.05, letterSpacing: -2, color: '#1A1612', marginBottom: 14 }}>
+<h1 style={{ fontSize: 'clamp(40px,7vw,72px)', fontWeight: 800, lineHeight: 1.05, letterSpacing: -2, color: '#1A1612', marginBottom: 14 }}>
             Просто напиши<br /><span style={{ color: '#EF9F27' }}>задачу.</span>
           </h1>
           <p style={{ fontSize: 17, color: '#9A8060', lineHeight: 1.65, marginBottom: 36, maxWidth: 460 }}>
