@@ -87,14 +87,30 @@ export const chat = action({
       }),
     })
 
+    const responseText = await response.text()
+
     if (!response.ok) {
-      const err = await response.text()
-      throw new Error(`OpenAI error: ${err}`)
+      throw new Error(`OpenAI ${response.status}: ${responseText}`)
     }
 
-    const data = await response.json() as {
-      choices: Array<{ message: { content: string } }>
+    let data: { choices: Array<{ message: { content: string } }> }
+    try {
+      data = JSON.parse(responseText)
+    } catch {
+      throw new Error(`Invalid JSON from OpenAI: ${responseText.slice(0, 200)}`)
     }
-    return data.choices[0].message.content
+
+    const content = data.choices?.[0]?.message?.content
+    if (!content) throw new Error(`Empty response from OpenAI: ${responseText.slice(0, 200)}`)
+
+    // Validate the content is valid JSON before returning
+    try {
+      JSON.parse(content)
+    } catch {
+      // If not JSON, wrap it
+      return JSON.stringify({ type: "question", message: content, chips: [] })
+    }
+
+    return content
   },
 })
