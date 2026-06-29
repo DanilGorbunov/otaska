@@ -6,7 +6,7 @@ import { api } from '../../convex/_generated/api'
 
 type Step = 1 | 2
 
-interface ChatMsg { role: 'user' | 'assistant'; content: string; isPassword?: boolean }
+interface ChatMsg { role: 'user' | 'assistant'; content: string; card?: AIResult; cardIndex?: number }
 interface AIResult {
   emoji: string; category: string; title: string; details: string
   budgetMin: number; budgetMax: number
@@ -78,9 +78,11 @@ export function Landing() {
         if (secondGoalMode) {
           setSecondAiResult(parsed.summary)
           setSecondGoalMode(false)
+          setMsgs(prev => [...prev, { role: 'assistant', content: '', card: parsed.summary, cardIndex: 1 }])
           setTimeout(() => startRegFields(), 600)
         } else {
           setAiResult(parsed.summary)
+          setMsgs(prev => [...prev, { role: 'assistant', content: '', card: parsed.summary, cardIndex: 0 }])
           setTimeout(() => {
             setAskGoalStep(true)
             setChips(['Так, додам ще одну', 'Ні, все готово'])
@@ -338,7 +340,21 @@ export function Landing() {
           <div style={{ flex: 1, overflowY: 'auto', padding: '20px 16px 0' }}>
             <button onClick={() => setStep(1)} style={S.back}><BackArrow /> Назад</button>
 
-            {msgs.map((m, i) => (
+            {msgs.map((m, i) => m.card ? (
+              <div key={i} style={{ background: '#fff', border: '2px solid #EF9F27', borderRadius: 16, padding: '12px 16px', marginBottom: 10, boxShadow: '0 4px 20px rgba(239,159,39,.12)' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, color: '#B4924A', textTransform: 'uppercase', marginBottom: 6 }}>
+                  Ціль{secondAiResult ? ` ${(m.cardIndex ?? 0) + 1}` : ''}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 20 }}>{m.card.emoji}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: '#1A1612' }}>{m.card.title}</div>
+                    <div style={{ fontSize: 12, color: '#9A8060' }}>{m.card.details}</div>
+                  </div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: '#EF9F27', whiteSpace: 'nowrap' }}>€{m.card.budgetMin}–{m.card.budgetMax}</div>
+                </div>
+              </div>
+            ) : (
               <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start', marginBottom: 12 }}>
                 {m.role === 'assistant' && (
                   <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#EF9F27', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 8, flexShrink: 0, marginTop: 2 }}>
@@ -373,21 +389,6 @@ export function Landing() {
                 </div>
               </div>
             )}
-
-            {/* Goal cards */}
-            {[aiResult, secondAiResult].filter(Boolean).map((r, i) => r && (
-              <div key={i} style={{ background: '#fff', border: '2px solid #EF9F27', borderRadius: 16, padding: '12px 16px', marginBottom: 10, boxShadow: '0 4px 20px rgba(239,159,39,.12)' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, color: '#B4924A', textTransform: 'uppercase', marginBottom: 6 }}>Ціль {secondAiResult ? i + 1 : ''}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 20 }}>{r.emoji}</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: '#1A1612' }}>{r.title}</div>
-                    <div style={{ fontSize: 12, color: '#9A8060' }}>{r.details}</div>
-                  </div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: '#EF9F27', whiteSpace: 'nowrap' }}>€{r.budgetMin}–{r.budgetMax}</div>
-                </div>
-              </div>
-            ))}
 
             {/* "Add another goal?" appears after the card */}
             {askGoalStep && (
