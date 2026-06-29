@@ -310,7 +310,7 @@ export function Landing() {
           <h2 style={{ fontSize: 32, fontWeight: 800, color: '#1A1612', letterSpacing: -1, marginBottom: 8 }}>Майже готово</h2>
           <p style={{ fontSize: 15, color: '#9A8060', marginBottom: 32 }}>Ще один крок — і твій запис буде опублікований</p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <form onSubmit={e => { e.preventDefault(); handleRegister() }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {aiResult && (
               <div style={{ padding: '14px 18px', borderRadius: 12, background: '#FEF6E8', border: '1px solid #F5D99A', display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontSize: 20 }}>{aiResult.emoji}</span>
@@ -346,7 +346,7 @@ export function Landing() {
               </div>
             )}
 
-            <button onClick={handleRegister} disabled={authLoading}
+            <button type="submit" disabled={authLoading}
               style={{ ...S.btnAmber, opacity: authLoading ? 0.7 : 1 }}>
               {authLoading ? 'Публікуємо...' : 'Опублікувати запис →'}
             </button>
@@ -356,11 +356,11 @@ export function Landing() {
             </p>
             <p style={{ fontSize: 14, color: '#9A8060', textAlign: 'center' }}>
               Вже є акаунт?{' '}
-              <button onClick={() => navigate('/login')} style={{ color: '#EF9F27', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'system-ui', fontSize: 14 }}>
+              <button type="button" onClick={() => navigate('/login')} style={{ color: '#EF9F27', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'system-ui', fontSize: 14 }}>
                 Увійти
               </button>
             </p>
-          </div>
+          </form>
         </div>
       )}
 
