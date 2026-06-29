@@ -208,7 +208,7 @@ export function Landing() {
               <textarea
                 ref={textareaRef}
                 value={task}
-                onChange={e => { setTask(e.target.value); setAiResult(null); setAiRefining(false) }}
+                onChange={e => { setTask(e.target.value); setAiResult(null) }}
                 onFocus={() => setFocused(true)}
                 onBlur={() => setFocused(false)}
                 placeholder="plumber available Mon–Fri..."
