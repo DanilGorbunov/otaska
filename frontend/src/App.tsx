@@ -1,6 +1,5 @@
-import { useEffect } from 'react'
+import { useConvexAuth } from 'convex/react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { useAuthStore } from './store/auth.store'
 import { AppShell } from './components/layout/AppShell'
 import { Dashboard } from './pages/Dashboard'
 import { Browse } from './pages/Browse'
@@ -13,24 +12,20 @@ import { Login } from './pages/Auth/Login'
 import { Landing } from './pages/Landing'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { token } = useAuthStore()
-  if (!token) return <Navigate to="/" replace />
+  const { isAuthenticated, isLoading } = useConvexAuth()
+  if (isLoading) return null
+  if (!isAuthenticated) return <Navigate to="/" replace />
   return <>{children}</>
 }
 
 function GuestOnly({ children }: { children: React.ReactNode }) {
-  const { token } = useAuthStore()
-  if (token) return <Navigate to="/app" replace />
+  const { isAuthenticated, isLoading } = useConvexAuth()
+  if (isLoading) return null
+  if (isAuthenticated) return <Navigate to="/app" replace />
   return <>{children}</>
 }
 
 export default function App() {
-  const { fetchMe } = useAuthStore()
-
-  useEffect(() => {
-    fetchMe()
-  }, [])
-
   return (
     <BrowserRouter>
       <Routes>

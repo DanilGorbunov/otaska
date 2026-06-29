@@ -1,0 +1,117 @@
+import { query, mutation } from "./_generated/server"
+import { getAuthUserId } from "@convex-dev/auth/server"
+import { v } from "convex/values"
+
+const intentTypeV = v.union(
+  v.literal("seeking_service"),
+  v.literal("offering_service"),
+  v.literal("seeking_material"),
+  v.literal("seeking_job"),
+)
+
+const entryTypeV = v.union(
+  v.literal("on_demand"),
+  v.literal("project"),
+  v.literal("material"),
+)
+
+export const listMine = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) return []
+    return ctx.db
+      .query("entries")
+      .withIndex("by_client", (q) => q.eq("clientId", userId))
+      .order("desc")
+      .take(50)
+  },
+})
+
+export const listOpen = query({
+  args: {
+    city: v.optional(v.string()),
+    intentType: v.optional(v.string()),
+    category: v.optional(v.string()),
+  },
+  handler: async (ctx, { city, intentType, category }) => {
+    const results = await ctx.db
+      .query("entries")
+      .withIndex("by_status", (q) => q.eq("status", "open"))
+      .order("desc")
+      .take(100)
+    return results.filter((e) => {
+      if (intentType && e.intentType !== intentType) return false
+      if (category && e.category !== category) return false
+      if (city && e.city && !e.city.toLowerCase().includes(city.toLowerCase())) return false
+      return true
+    })
+  },
+})
+
+export const get = query({
+  args: { id: v.id("entries") },
+  handler: async (ctx, { id }) => ctx.db.get(id),
+})
+
+export const create = mutation({
+  args: {
+    title: v.string(),
+    description: v.string(),
+    intentType: intentTypeV,
+    entryType: entryTypeV,
+    category: v.optional(v.string()),
+    city: v.optional(v.string()),
+    budgetMin: v.optional(v.number()),
+    budgetMax: v.optional(v.number()),
+    skills: v.optional(v.array(v.string())),
+    urgency: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+    return ctx.db.insert("entries", {
+      ...args,
+      clientId: userId,
+      status: "draft",
+      currency: "EUR",
+    })
+  },
+})
+
+export const publish = mutation({
+  args: { id: v.id("entries") },
+  handler: async (ctx, { id }) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+    const entry = await ctx.db.get(id)
+    if (!entry || entry.clientId !== userId) throw new Error("Not found")
+    await ctx.db.patch(id, { status: "open" })
+  },
+})
+
+export const createAndPublish = mutation({
+  args: {
+    title: v.string(),
+    description: v.string(),
+    intentType: intentTypeV,
+    entryType: entryTypeV,
+    category: v.optional(v.string()),
+    city: v.optional(v.string()),
+    budgetMin: v.optional(v.number()),
+    budgetMax: v.optional(v.number()),
+    skills: v.optional(v.array(v.string())),
+    urgency: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+    const id = await ctx.db.insert("entries", {
+      ...args,
+      clientId: userId,
+      status: "open",
+      currency: "EUR",
+    })
+    return id
+  },
+})

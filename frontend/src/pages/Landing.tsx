@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuthStore } from '../store/auth.store'
-import { aiApi } from '../lib/api'
+import { useAuthActions } from '@convex-dev/auth/react'
 import axios from 'axios'
 
 type Step = 1 | 2 | 3 | 4
@@ -28,8 +27,9 @@ interface AIResult {
 
 export function Landing() {
   const navigate = useNavigate()
-  const { register, loading: authLoading } = useAuthStore()
+  const { signIn } = useAuthActions()
   const [step, setStep] = useState<Step>(1)
+  const [authLoading, setAuthLoading] = useState(false)
   const [task, setTask] = useState('')
   const [focused, setFocused] = useState(false)
   const [aiLoading, setAiLoading] = useState(false)
@@ -80,18 +80,24 @@ export function Landing() {
       return
     }
     setError('')
+    setAuthLoading(true)
     try {
-      await register({
-        name: form.name,
+      await signIn('password', {
         email: form.email,
         password: form.password,
-        city: form.city || undefined,
-        first_task: task,
+        name: form.name,
+        flow: 'signUp',
       })
       setStep(4)
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
-      setError(msg ?? 'Помилка реєстрації')
+      const msg = (err as Error)?.message
+      if (msg?.includes('already exists') || msg?.includes('existing')) {
+        setError('Email вже зареєстрований — увійди через Sign in')
+      } else {
+        setError(msg ?? 'Помилка реєстрації')
+      }
+    } finally {
+      setAuthLoading(false)
     }
   }
 

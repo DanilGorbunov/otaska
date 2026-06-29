@@ -1,23 +1,27 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { useAuthStore } from '../../store/auth.store'
+import { useNavigate } from 'react-router-dom'
+import { useAuthActions } from '@convex-dev/auth/react'
 import { Logo } from '../../components/layout/Logo'
 
 export function Login() {
   const navigate = useNavigate()
-  const { login, loading } = useAuthStore()
+  const { signIn } = useAuthActions()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setLoading(true)
     try {
-      await login(email, password)
+      await signIn('password', { email, password, flow: 'signIn' })
       navigate('/app')
     } catch {
       setError('Невірний email або пароль')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -39,15 +43,19 @@ export function Login() {
         <form onSubmit={handleSubmit} style={{ background: '#fff', borderRadius: 20, padding: 24, boxShadow: '0 2px 12px rgba(0,0,0,.08)' }}>
           <div style={{ marginBottom: 14 }}>
             <label style={{ fontSize: 13, fontWeight: 600, color: '#8E8E93', display: 'block', marginBottom: 6 }}>Email</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
-              placeholder="your@email.com"
-              style={{ width: '100%', padding: '13px 14px', borderRadius: 12, border: '1px solid #E5E5EA', fontSize: 17, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+            <input
+              type="email" value={email} onChange={e => setEmail(e.target.value)}
+              required placeholder="your@email.com"
+              style={{ width: '100%', padding: '13px 14px', borderRadius: 12, border: '1px solid #E5E5EA', fontSize: 17, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+            />
           </div>
           <div style={{ marginBottom: 20 }}>
             <label style={{ fontSize: 13, fontWeight: 600, color: '#8E8E93', display: 'block', marginBottom: 6 }}>Пароль</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
-              placeholder="••••••••"
-              style={{ width: '100%', padding: '13px 14px', borderRadius: 12, border: '1px solid #E5E5EA', fontSize: 17, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+            <input
+              type="password" value={password} onChange={e => setPassword(e.target.value)}
+              required placeholder="••••••••"
+              style={{ width: '100%', padding: '13px 14px', borderRadius: 12, border: '1px solid #E5E5EA', fontSize: 17, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+            />
           </div>
 
           {error && <div style={{ color: '#FF3B30', fontSize: 14, marginBottom: 14, textAlign: 'center' }}>{error}</div>}
@@ -55,7 +63,7 @@ export function Login() {
           <button type="submit" disabled={loading} style={{
             width: '100%', padding: 16, borderRadius: 14, border: 'none', cursor: 'pointer',
             background: '#111111', color: '#fff', fontSize: 17, fontWeight: 700, fontFamily: 'inherit',
-            boxShadow: '0 4px 16px rgba(0,0,0,.2)',
+            boxShadow: '0 4px 16px rgba(0,0,0,.2)', opacity: loading ? 0.7 : 1,
           }}>
             {loading ? 'Входимо...' : 'Увійти'}
           </button>
@@ -63,7 +71,9 @@ export function Login() {
 
         <p style={{ textAlign: 'center', fontSize: 15, color: '#8E8E93', marginTop: 20 }}>
           Немає акаунту?{' '}
-          <Link to="/register" style={{ color: '#111111', fontWeight: 600, textDecoration: 'none' }}>Реєстрація</Link>
+          <button onClick={() => navigate('/')} style={{ color: '#111111', fontWeight: 600, textDecoration: 'none', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 15 }}>
+            Реєстрація
+          </button>
         </p>
       </div>
     </div>
