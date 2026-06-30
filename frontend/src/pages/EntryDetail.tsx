@@ -217,17 +217,12 @@ export function EntryDetail() {
         <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#9A8060', display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'inherit' }}>← Назад</button>
         <span style={{ fontSize: 16, fontWeight: 700, color: '#1A1612' }}>{isProject ? 'Проєкт' : 'Запис'}</span>
         <div style={{ position: 'relative' }}>
-          {/* For other user's entries: link to their profile */}
-          {!isOwn && entry.clientId && (
-            <button onClick={() => navigate(`/app/users/${entry.clientId}`)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', fontSize: 13, color: '#9A8060', fontFamily: 'inherit' }}>
-              👤 Профіль
+          {isOwn && <>
+            <button onClick={() => setMenuOpen(o => !o)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
+              {[0,1,2].map(i => <div key={i} style={{ width: 4, height: 4, borderRadius: '50%', background: '#9A8060' }} />)}
             </button>
-          )}
-          <button onClick={() => setMenuOpen(o => !o)} style={{ display: isOwn ? undefined : 'none' }}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
-            {[0,1,2].map(i => <div key={i} style={{ width: 4, height: 4, borderRadius: '50%', background: '#9A8060' }} />)}
-          </button>
+          </>}
           {menuOpen && (
             <>
               <div style={{ position: 'fixed', inset: 0, zIndex: 19 }} onClick={() => setMenuOpen(false)} />
@@ -274,6 +269,21 @@ export function EntryDetail() {
               </span>
             )}
           </div>
+
+          {/* Author profile row — only for other users' entries */}
+          {!isOwn && entry.clientId && (
+            <div onClick={() => navigate(`/app/users/${entry.clientId}`)}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14, paddingTop: 14, borderTop: '1px solid #EDE8DF', cursor: 'pointer' }}>
+              <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg,#111 0%,#333 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+                ?
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1612' }}>Переглянути профіль автора</div>
+                <div style={{ fontSize: 11, color: '#9A8060' }}>Рейтинг, досвід, навички</div>
+              </div>
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#C0B49A" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
+            </div>
+          )}
         </div>
 
         {/* ── AI MATCHES ── */}
