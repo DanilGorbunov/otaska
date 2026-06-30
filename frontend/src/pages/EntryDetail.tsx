@@ -1,293 +1,219 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { NavBar } from '../components/layout/NavBar'
-import { IntentBadge } from '../components/ui/IntentBadge'
-import { MOCK_ENTRIES, MOCK_BROWSE_ENTRIES, MOCK_PROPOSALS, MOCK_USER } from '../lib/mockData'
-
-const statusLabel: Record<string, string> = {
-  draft: 'Чернетка', open: 'Відкрито', matched: 'Знайдено',
-  booked: 'Заброньовано', in_progress: 'Виконується', done: 'Виконано ✓', cancelled: 'Скасовано',
-}
-const statusColor: Record<string, string> = {
-  open: '#007AFF', matched: '#FF9500', booked: '#FF9500',
-  in_progress: '#FF9500', done: '#34C759', cancelled: '#FF3B30', draft: '#8E8E93',
-}
-const urgencyLabel: Record<string, string> = {
-  high: '🔴 Терміново', medium: '🟡 Звичайно', low: '🟢 Не спішно',
-}
-const categoryEmoji: Record<string, string> = {
-  electric: '⚡', plumbing: '🔧', renovation: '🏗️', painting: '🎨',
-  tiling: '🪟', carpentry: '🪚', materials: '🪨', labor: '👷', moving: '📦',
-}
-
-function StarIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="#FF9500" stroke="none">
-      <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
-    </svg>
-  )
-}
-
-function VerifiedBadge() {
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 3,
-      fontSize: 11, fontWeight: 600, color: '#007AFF',
-      background: 'rgba(0,122,255,.1)', padding: '2px 7px', borderRadius: 20,
-    }}>
-      ✓ Верифіковано
-    </span>
-  )
-}
+import { useQuery, useMutation } from 'convex/react'
+import { api } from '../../convex/_generated/api'
+import type { Id } from '../../convex/_generated/dataModel'
 
 export function EntryDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const [showProposalForm, setShowProposalForm] = useState(false)
-  const [proposalPrice, setProposalPrice] = useState('')
-  const [proposalMsg, setProposalMsg] = useState('')
-  const [accepted, setAccepted] = useState<string | null>(null)
+  const entry = useQuery(api.entries.get, id ? { id: id as Id<'entries'> } : 'skip')
+  const updateEntry = useMutation(api.entries.update)
+  const removeEntry = useMutation(api.entries.remove)
 
-  const allEntries = [...MOCK_ENTRIES, ...MOCK_BROWSE_ENTRIES]
-  const entry = allEntries.find(e => e.id === id)
-  const proposals = MOCK_PROPOSALS[id ?? ''] ?? []
-  const isOwner = entry?.client_id === MOCK_USER.id
+  const [editing, setEditing] = useState(false)
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [city, setCity] = useState('')
+  const [budgetMin, setBudgetMin] = useState('')
+  const [budgetMax, setBudgetMax] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
-  if (!entry) return (
-    <div>
-      <NavBar title="Запис" />
-      <div style={{ textAlign: 'center', padding: 64, color: '#8E8E93' }}>
+  if (entry === undefined) return (
+    <div style={{ textAlign: 'center', padding: 64, color: '#9A8060', fontFamily: 'system-ui' }}>
+      Завантаження…
+    </div>
+  )
+
+  if (entry === null) return (
+    <div style={{ fontFamily: 'system-ui' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '16px', borderBottom: '1px solid #EDE8DF' }}>
+        <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#9A8060', display: 'flex', alignItems: 'center', gap: 4 }}>
+          ← Назад
+        </button>
+        <span style={{ fontWeight: 700 }}>Запис</span>
+      </div>
+      <div style={{ textAlign: 'center', padding: 64 }}>
         <div style={{ fontSize: 40, marginBottom: 12 }}>📭</div>
-        <div style={{ fontSize: 17, fontWeight: 500, color: '#000' }}>Запис не знайдено</div>
+        <div style={{ fontSize: 17, fontWeight: 700, color: '#1A1612' }}>Запис не знайдено</div>
       </div>
     </div>
   )
 
-  const emoji = categoryEmoji[entry.category ?? ''] ?? '🔨'
-  const fromBrowse = MOCK_BROWSE_ENTRIES.some(e => e.id === id)
-  const backTitle = fromBrowse ? 'Знайти' : 'Записи'
+  const isProject = entry.entryType === 'project'
+
+  const startEdit = () => {
+    setTitle(entry.title ?? '')
+    setDescription(entry.description ?? '')
+    setCity(entry.city ?? '')
+    setBudgetMin(entry.budgetMin ? String(entry.budgetMin) : '')
+    setBudgetMax(entry.budgetMax ? String(entry.budgetMax) : '')
+    setEditing(true)
+  }
+
+  const saveEdit = async () => {
+    setSaving(true)
+    try {
+      await updateEntry({
+        id: entry._id,
+        title: title.trim() || undefined,
+        description: description.trim() || undefined,
+        city: city.trim() || undefined,
+        budgetMin: budgetMin ? Number(budgetMin) : undefined,
+        budgetMax: budgetMax ? Number(budgetMax) : undefined,
+      })
+      setEditing(false)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    await removeEntry({ id: entry._id })
+    navigate('/app', { replace: true })
+  }
+
+  const statusColor = entry.status === 'open' ? '#22C55E' : entry.status === 'done' ? '#9A8060' : '#EF9F27'
+  const statusLabel = entry.status === 'open' ? 'Активно' : entry.status === 'done' ? 'Виконано' : entry.status ?? 'Відкрито'
 
   return (
-    <div style={{ paddingBottom: 32 }}>
-      <NavBar title="Деталі" backTitle={backTitle} />
+    <div style={{ fontFamily: 'system-ui,-apple-system,sans-serif', background: '#F5F4F1', minHeight: '100dvh' }}>
+      {/* Nav */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: '#F5F4F1', borderBottom: '1px solid #EDE8DF', position: 'sticky', top: 0, zIndex: 10 }}>
+        <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#9A8060', display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'inherit' }}>
+          ← Назад
+        </button>
+        <span style={{ fontSize: 16, fontWeight: 700, color: '#1A1612' }}>{isProject ? 'Проєкт' : 'Запис'}</span>
+        <button onClick={startEdit} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#EF9F27', fontWeight: 600, fontFamily: 'inherit' }}>
+          Редагувати
+        </button>
+      </div>
 
-      {/* Hero card */}
-      <div style={{ padding: '16px 16px 0' }}>
-        <div style={{
-          background: '#fff', borderRadius: 20, padding: 20,
-          boxShadow: '0 1px 8px rgba(0,0,0,.08)', marginBottom: 12,
-        }}>
-          {/* Category + urgency */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <span style={{
-              fontSize: 13, fontWeight: 600, color: '#8E8E93',
-              background: 'rgba(118,118,128,.1)', padding: '4px 10px', borderRadius: 20,
-            }}>
-              {emoji} {entry.category ?? 'Загальне'}
-            </span>
-            {entry.ai_urgency === 'high' && (
-              <span style={{
-                fontSize: 12, fontWeight: 700, color: '#FF3B30',
-                background: 'rgba(255,59,48,.1)', padding: '4px 10px', borderRadius: 20,
-              }}>Терміново</span>
-            )}
+      <div style={{ padding: '16px 16px 80px' }}>
+        {/* Main card */}
+        <div style={{ background: '#fff', borderRadius: 18, padding: '20px', border: '1.5px solid #EDE8DF', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            {isProject && <span style={{ fontSize: 22 }}>📁</span>}
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase' as const, letterSpacing: 1 }}>
+              {entry.category ?? (isProject ? 'Проєкт' : 'Запис')}
+            </div>
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5 }}>
+              <div style={{ width: 7, height: 7, borderRadius: '50%', background: statusColor }} />
+              <span style={{ fontSize: 12, color: statusColor, fontWeight: 600 }}>{statusLabel}</span>
+            </div>
           </div>
 
-          <h1 style={{ fontSize: 22, fontWeight: 700, margin: '0 0 10px', lineHeight: 1.3, letterSpacing: '-.3px' }}>
+          <h1 style={{ fontSize: 20, fontWeight: 800, color: '#1A1612', margin: '0 0 10px', lineHeight: 1.3 }}>
             {entry.title}
           </h1>
 
           {entry.description && (
-            <p style={{ fontSize: 15, color: '#3C3C43', margin: '0 0 14px', lineHeight: 1.55 }}>
+            <p style={{ fontSize: 14, color: '#5A4A2E', lineHeight: 1.6, margin: '0 0 14px' }}>
               {entry.description}
             </p>
           )}
 
-          {/* Meta row */}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 }}>
-            <IntentBadge type={entry.intent_type} />
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' as const, paddingTop: 14, borderTop: '1px solid #EDE8DF' }}>
             {entry.city && (
-              <span style={{ fontSize: 13, color: '#8E8E93', display: 'flex', alignItems: 'center', gap: 3 }}>
-                📍 {entry.city}
-              </span>
+              <div>
+                <div style={{ fontSize: 10, color: '#9A8060', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 1, marginBottom: 2 }}>Місто</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#1A1612' }}>📍 {entry.city}</div>
+              </div>
             )}
-          </div>
-
-          {/* Price + status */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 14, borderTop: '0.5px solid #E5E5EA' }}>
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#8E8E93', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 2 }}>
-                Бюджет
+            {entry.budgetMin && entry.budgetMax ? (
+              <div>
+                <div style={{ fontSize: 10, color: '#9A8060', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 1, marginBottom: 2 }}>Бюджет</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#EF9F27' }}>€{entry.budgetMin}–{entry.budgetMax}</div>
               </div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: '#000', letterSpacing: '-.5px' }}>
-                €{entry.budget_min}–{entry.budget_max}
+            ) : null}
+            {entry.intentType && (
+              <div>
+                <div style={{ fontSize: 10, color: '#9A8060', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 1, marginBottom: 2 }}>Тип</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1612' }}>
+                  {entry.intentType === 'seeking_service' ? '🔍 Шукаю послугу'
+                    : entry.intentType === 'offering_service' ? '⚡ Пропоную послугу'
+                    : entry.intentType === 'seeking_job' ? '💼 Шукаю роботу'
+                    : '🪨 Шукаю матеріали'}
+                </div>
               </div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#8E8E93', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 4 }}>
-                Статус
-              </div>
-              <span style={{
-                fontSize: 13, fontWeight: 700,
-                color: statusColor[entry.status] ?? '#8E8E93',
-                background: `${statusColor[entry.status] ?? '#8E8E93'}18`,
-                padding: '4px 10px', borderRadius: 20,
-              }}>
-                {statusLabel[entry.status] ?? entry.status}
-              </span>
-            </div>
+            )}
           </div>
         </div>
 
-        {/* Urgency pill */}
-        {entry.ai_urgency && (
-          <div style={{
-            background: '#fff', borderRadius: 14, padding: '12px 16px',
-            boxShadow: '0 1px 4px rgba(0,0,0,.06)', marginBottom: 12,
-            display: 'flex', alignItems: 'center', gap: 10,
-          }}>
-            <span style={{ fontSize: 20 }}>{urgencyLabel[entry.ai_urgency]?.split(' ')[0]}</span>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>{urgencyLabel[entry.ai_urgency]?.slice(2)}</div>
-              <div style={{ fontSize: 12, color: '#8E8E93' }}>Рівень терміновості</div>
+        {/* Proposals placeholder */}
+        <div style={{ background: '#fff', borderRadius: 16, padding: '20px 16px', border: '1.5px solid #EDE8DF', textAlign: 'center', marginBottom: 12 }}>
+          <div style={{ fontSize: 30, marginBottom: 8 }}>🔍</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: '#1A1612', marginBottom: 4 }}>Шукаємо виконавців</div>
+          <div style={{ fontSize: 13, color: '#9A8060' }}>Сповістимо коли хтось відгукнеться</div>
+        </div>
+
+        {/* Delete */}
+        {!confirmDelete ? (
+          <button onClick={() => setConfirmDelete(true)} style={{ width: '100%', padding: '14px', borderRadius: 14, background: 'transparent', border: '1.5px solid #FCA5A5', color: '#DC2626', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+            Видалити запис
+          </button>
+        ) : (
+          <div style={{ background: '#fff', borderRadius: 14, padding: 16, border: '1.5px solid #FCA5A5' }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#1A1612', marginBottom: 12, textAlign: 'center' }}>Видалити цей запис?</div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setConfirmDelete(false)} style={{ flex: 1, padding: 12, borderRadius: 12, background: '#F5F4F1', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600, color: '#5A4A2E', fontFamily: 'inherit' }}>Скасувати</button>
+              <button onClick={handleDelete} style={{ flex: 1, padding: 12, borderRadius: 12, background: '#DC2626', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 700, color: '#fff', fontFamily: 'inherit' }}>Видалити</button>
             </div>
-          </div>
-        )}
-
-        {/* ── OWNER VIEW: Proposals ── */}
-        {isOwner && (
-          <>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#8E8E93', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 10, marginTop: 4 }}>
-              {proposals.length > 0 ? `${proposals.length} пропозиц${proposals.length === 1 ? 'ія' : 'ії'}` : 'Пропозиції'}
-            </div>
-
-            {proposals.length === 0 ? (
-              <div style={{
-                background: '#fff', borderRadius: 16, padding: '32px 16px',
-                textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,.06)', marginBottom: 12,
-              }}>
-                <div style={{ fontSize: 36, marginBottom: 10 }}>🔍</div>
-                <div style={{ fontSize: 15, fontWeight: 500, color: '#000', marginBottom: 6 }}>Шукаємо виконавців</div>
-                <div style={{ fontSize: 13, color: '#8E8E93' }}>Сповістимо коли хтось відгукнеться</div>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
-                {proposals.map(p => (
-                  <div key={p.id} style={{
-                    background: '#fff', borderRadius: 16, padding: 16,
-                    boxShadow: '0 1px 6px rgba(0,0,0,.07)',
-                    border: accepted === p.id ? '2px solid #34C759' : '1px solid transparent',
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
-                        onClick={() => navigate(`/app/users/${p.id}`)}>
-                        <div style={{
-                          width: 44, height: 44, borderRadius: '50%', background: '#111',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 15, fontWeight: 700, color: '#fff', flexShrink: 0,
-                        }}>{p.initials}</div>
-                        <div>
-                          <div style={{ fontSize: 15, fontWeight: 600, color: '#007AFF' }}>{p.name}</div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                            <StarIcon />
-                            <span style={{ fontSize: 13, fontWeight: 600 }}>{p.rating}</span>
-                            <span style={{ fontSize: 12, color: '#8E8E93' }}>· {p.jobs} робіт</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-.5px' }}>€{p.price}</div>
-                        <div style={{ fontSize: 12, color: '#8E8E93' }}>{p.time}</div>
-                      </div>
-                    </div>
-
-                    {p.verified && <div style={{ marginBottom: 10 }}><VerifiedBadge /></div>}
-
-                    <p style={{ fontSize: 14, color: '#3C3C43', margin: '0 0 12px', lineHeight: 1.5 }}>{p.message}</p>
-
-                    {accepted === p.id ? (
-                      <div style={{ textAlign: 'center', padding: '10px 0', fontSize: 15, fontWeight: 700, color: '#34C759' }}>
-                        ✓ Прийнято
-                      </div>
-                    ) : accepted ? null : (
-                      <button onClick={() => setAccepted(p.id)} style={{
-                        width: '100%', padding: '12px 0', borderRadius: 12, border: 'none',
-                        background: '#111', color: '#fff', fontSize: 15, fontWeight: 700,
-                        cursor: 'pointer', fontFamily: 'inherit',
-                      }}>
-                        Прийняти пропозицію →
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
-
-        {/* ── BROWSE VIEW: Make proposal ── */}
-        {!isOwner && entry.status === 'open' && (
-          <div style={{ marginTop: 4 }}>
-            {!showProposalForm ? (
-              <button onClick={() => setShowProposalForm(true)} style={{
-                width: '100%', padding: 16, borderRadius: 16, border: 'none', cursor: 'pointer',
-                background: '#111', color: '#fff', fontSize: 17, fontWeight: 700,
-                fontFamily: 'inherit', letterSpacing: '-.2px',
-              }}>
-                Зробити пропозицію
-              </button>
-            ) : (
-              <div style={{ background: '#fff', borderRadius: 20, padding: 20, boxShadow: '0 1px 8px rgba(0,0,0,.08)' }}>
-                <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 16 }}>Ваша пропозиція</div>
-
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#8E8E93', marginBottom: 6 }}>ЦІНА (€)</div>
-                  <input type="number" value={proposalPrice} onChange={e => setProposalPrice(e.target.value)}
-                    placeholder="Наприклад: 450"
-                    style={{
-                      width: '100%', padding: '13px 16px', borderRadius: 12, border: '1.5px solid #E5E5EA',
-                      fontSize: 20, fontWeight: 700, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box',
-                    }}
-                    onFocus={e => { e.currentTarget.style.borderColor = '#111' }}
-                    onBlur={e => { e.currentTarget.style.borderColor = '#E5E5EA' }}
-                  />
-                </div>
-
-                <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#8E8E93', marginBottom: 6 }}>ПОВІДОМЛЕННЯ</div>
-                  <textarea value={proposalMsg} onChange={e => setProposalMsg(e.target.value)}
-                    placeholder="Розкажіть про свій досвід та терміни..."
-                    style={{
-                      width: '100%', padding: '13px 16px', borderRadius: 12, border: '1.5px solid #E5E5EA',
-                      fontSize: 15, outline: 'none', resize: 'none', minHeight: 90,
-                      fontFamily: 'inherit', boxSizing: 'border-box', lineHeight: 1.5,
-                    }}
-                    onFocus={e => { e.currentTarget.style.borderColor = '#111' }}
-                    onBlur={e => { e.currentTarget.style.borderColor = '#E5E5EA' }}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <button onClick={() => setShowProposalForm(false)} style={{
-                    flex: 1, padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer',
-                    background: 'rgba(118,118,128,.12)', fontSize: 15, fontWeight: 600,
-                    color: '#3C3C43', fontFamily: 'inherit',
-                  }}>Скасувати</button>
-                  <button
-                    onClick={() => { setShowProposalForm(false); setProposalPrice(''); setProposalMsg(''); navigate('/app/chat/c1') }}
-                    disabled={!proposalPrice}
-                    style={{
-                      flex: 2, padding: 14, borderRadius: 12, border: 'none',
-                      cursor: proposalPrice ? 'pointer' : 'not-allowed',
-                      background: proposalPrice ? '#111' : '#C7C7CC',
-                      color: '#fff', fontSize: 15, fontWeight: 700, fontFamily: 'inherit',
-                    }}>Відправити →</button>
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>
+
+      {/* Edit sheet */}
+      {editing && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 80, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(6px)' }} onClick={() => setEditing(false)} />
+          <div style={{ position: 'relative', width: '100%', maxWidth: 480, zIndex: 90, background: '#F5F4F1', borderRadius: '24px 24px 0 0', maxHeight: '92dvh', overflowY: 'auto', boxShadow: '0 -8px 48px rgba(0,0,0,.22)', padding: '20px 16px 48px' }}>
+            <div style={{ width: 36, height: 4, borderRadius: 99, background: '#D1C8B8', margin: '-8px auto 16px' }} />
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#1A1612', marginBottom: 16 }}>Редагувати</div>
+
+            {[
+              { label: 'Назва', value: title, set: setTitle, placeholder: 'Назва запису' },
+              { label: 'Місто', value: city, set: setCity, placeholder: 'Братислава' },
+            ].map(f => (
+              <div key={f.label} style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase' as const, letterSpacing: 1, marginBottom: 6 }}>{f.label}</div>
+                <input value={f.value} onChange={e => f.set(e.target.value)} placeholder={f.placeholder}
+                  style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1.5px solid #EDE8DF', fontSize: 15, color: '#1A1612', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' as const, background: '#fff' }}
+                  onFocus={e => { e.currentTarget.style.borderColor = '#EF9F27' }}
+                  onBlur={e => { e.currentTarget.style.borderColor = '#EDE8DF' }} />
+              </div>
+            ))}
+
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase' as const, letterSpacing: 1, marginBottom: 6 }}>Опис</div>
+              <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Опис задачі..."
+                style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1.5px solid #EDE8DF', fontSize: 15, color: '#1A1612', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' as const, background: '#fff', resize: 'none', minHeight: 80, lineHeight: 1.5 }}
+                onFocus={e => { e.currentTarget.style.borderColor = '#EF9F27' }}
+                onBlur={e => { e.currentTarget.style.borderColor = '#EDE8DF' }} />
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+              {[{ label: 'Бюджет від €', value: budgetMin, set: setBudgetMin }, { label: 'до €', value: budgetMax, set: setBudgetMax }].map(f => (
+                <div key={f.label} style={{ flex: 1 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase' as const, letterSpacing: 1, marginBottom: 6 }}>{f.label}</div>
+                  <input type="number" value={f.value} onChange={e => f.set(e.target.value)} placeholder="0"
+                    style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1.5px solid #EDE8DF', fontSize: 15, color: '#1A1612', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' as const, background: '#fff' }}
+                    onFocus={e => { e.currentTarget.style.borderColor = '#EF9F27' }}
+                    onBlur={e => { e.currentTarget.style.borderColor = '#EDE8DF' }} />
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setEditing(false)} style={{ flex: 1, padding: 14, borderRadius: 14, background: '#EDE8DF', border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 600, color: '#5A4A2E', fontFamily: 'inherit' }}>Скасувати</button>
+              <button onClick={saveEdit} disabled={saving} style={{ flex: 2, padding: 14, borderRadius: 14, background: '#EF9F27', border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 700, color: '#1A1612', fontFamily: 'inherit', opacity: saving ? 0.6 : 1 }}>
+                {saving ? 'Зберігаємо…' : 'Зберегти →'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

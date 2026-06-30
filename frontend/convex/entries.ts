@@ -90,6 +90,36 @@ export const publish = mutation({
   },
 })
 
+export const update = mutation({
+  args: {
+    id: v.id("entries"),
+    title: v.optional(v.string()),
+    description: v.optional(v.string()),
+    city: v.optional(v.string()),
+    budgetMin: v.optional(v.number()),
+    budgetMax: v.optional(v.number()),
+    status: v.optional(v.string()),
+  },
+  handler: async (ctx, { id, ...fields }) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+    const entry = await ctx.db.get(id)
+    if (!entry || entry.clientId !== userId) throw new Error("Not found")
+    await ctx.db.patch(id, fields)
+  },
+})
+
+export const remove = mutation({
+  args: { id: v.id("entries") },
+  handler: async (ctx, { id }) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+    const entry = await ctx.db.get(id)
+    if (!entry || entry.clientId !== userId) throw new Error("Not found")
+    await ctx.db.delete(id)
+  },
+})
+
 export const createAndPublish = mutation({
   args: {
     title: v.string(),
