@@ -1,31 +1,35 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { Entry } from '../types'
-import { IntentBadge } from '../components/ui/IntentBadge'
-import { MOCK_BROWSE_ENTRIES } from '../lib/mockData'
+import { useQuery } from 'convex/react'
+import { api } from '../../convex/_generated/api'
 import { BellButton } from '../components/layout/NavBar'
 
-const categories = ['Всі', 'Електрика', 'Сантехніка', 'Ремонт', 'Фарбування', 'Плитка', 'Теслярство', 'Матеріали', 'Переїзд']
+const CATEGORIES = ['Всі', 'Електрика', 'Сантехніка', 'Ремонт', 'Фарбування', 'Плитка', 'Теслярство', 'Матеріали', 'Переїзд', 'Інше']
 
-const CAT_MAP: Record<string, string> = {
-  'Електрика': 'electric', 'Сантехніка': 'plumbing', 'Ремонт': 'renovation',
-  'Фарбування': 'painting', 'Плитка': 'tiling', 'Теслярство': 'carpentry',
-  'Матеріали': 'materials', 'Переїзд': 'moving',
+const INTENT_LABEL: Record<string, { label: string; color: string; bg: string }> = {
+  seeking_service:  { label: 'Шукає виконавця', color: '#1D4ED8', bg: 'rgba(29,78,216,.1)' },
+  offering_service: { label: 'Пропонує послугу', color: '#15803D', bg: 'rgba(21,128,61,.1)' },
+  seeking_job:      { label: 'Шукає роботу',     color: '#7C3AED', bg: 'rgba(124,58,237,.1)' },
+  seeking_material: { label: 'Шукає матеріали',  color: '#B45309', bg: 'rgba(180,83,9,.1)' },
 }
 
 export function Browse() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('Всі')
-  const loading = false
 
-  const entries = useMemo<Entry[]>(() => {
-    return MOCK_BROWSE_ENTRIES.filter(e => {
-      const matchCat = category === 'Всі' || e.category === CAT_MAP[category]
-      const matchSearch = !search || e.title.toLowerCase().includes(search.toLowerCase())
+  const allOpen = useQuery(api.entries.listOpen, {}) ?? null
+
+  const entries = useMemo(() => {
+    if (!allOpen) return null
+    return allOpen.filter(e => {
+      if (e.entryType === 'project') return false
+      const matchCat = category === 'Всі' || e.category === category
+      const matchSearch = !search || e.title.toLowerCase().includes(search.toLowerCase()) ||
+        (e.description ?? '').toLowerCase().includes(search.toLowerCase())
       return matchCat && matchSearch
     })
-  }, [search, category])
+  }, [allOpen, search, category])
 
   return (
     <div>
@@ -59,7 +63,7 @@ export function Browse() {
 
         {/* Category pills */}
         <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 12, scrollbarWidth: 'none' }}>
-          {categories.map(cat => (
+          {CATEGORIES.map(cat => (
             <button key={cat} onClick={() => setCategory(cat)} style={{
               padding: '6px 14px', borderRadius: 99, border: 'none', cursor: 'pointer', flexShrink: 0,
               background: category === cat ? '#000' : 'rgba(118,118,128,.12)',
@@ -73,7 +77,7 @@ export function Browse() {
         </div>
       </div>
 
-      {loading ? (
+      {entries === null ? (
         <div style={{ textAlign: 'center', padding: 48, color: '#8E8E93' }}>Завантаження...</div>
       ) : entries.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 48, color: '#8E8E93' }}>
@@ -81,38 +85,35 @@ export function Browse() {
           <div style={{ fontSize: 17, fontWeight: 500, color: '#000' }}>Нічого не знайдено</div>
         </div>
       ) : (
-        <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {entries.map(entry => (
-            <div key={entry.id} onClick={() => navigate(`/app/entries/${entry.id}`)}
-              style={{
-                background: '#fff', borderRadius: 16, padding: '14px 16px', cursor: 'pointer',
-                boxShadow: '0 1px 4px rgba(0,0,0,.06)',
-                transition: 'transform .1s',
-              }}
-              onMouseOver={e => (e.currentTarget.style.transform = 'scale(1.005)')}
-              onMouseOut={e => (e.currentTarget.style.transform = 'scale(1)')}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-                <div style={{ fontSize: 15, fontWeight: 500, flex: 1, marginRight: 8 }}>{entry.title}</div>
-                {entry.ai_urgency === 'high' && (
-                  <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 5, background: 'rgba(255,59,48,.1)', color: '#FF3B30', flexShrink: 0 }}>
-                    Терміново
-                  </span>
+        <div style={{ padding: '0 16px 100px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {entries.map(e => {
+            const intent = INTENT_LABEL[e.intentType] ?? { label: e.intentType, color: '#666', bg: '#f0f0f0' }
+            return (
+              <div key={e._id} onClick={() => navigate(`/app/entries/${e._id}`)}
+                style={{ background: '#fff', borderRadius: 16, padding: '14px 16px', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                  <div style={{ fontSize: 15, fontWeight: 600, flex: 1, marginRight: 8, color: '#1A1612' }}>{e.title}</div>
+                </div>
+                {e.description && e.description !== e.title && (
+                  <div style={{ fontSize: 13, color: '#5A4A2E', marginBottom: 8, lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    {e.description}
+                  </div>
                 )}
-              </div>
-              <div style={{ fontSize: 13, color: '#8E8E93', display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                {entry.city && <span>📍 {entry.city}</span>}
-                {(entry.budget_min || entry.budget_max) && (
-                  <span style={{ fontWeight: 500, color: '#333333' }}>
-                    €{entry.budget_min ?? '?'}–{entry.budget_max ?? '?'}
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 8px', borderRadius: 8, background: intent.bg, color: intent.color }}>
+                    {intent.label}
                   </span>
-                )}
-                {entry.category && <span>{entry.category}</span>}
+                  {e.city && <span style={{ fontSize: 12, color: '#9A8060' }}>📍 {e.city}</span>}
+                  {e.category && e.category !== 'Інше' && (
+                    <span style={{ fontSize: 12, color: '#9A8060', background: 'rgba(154,128,96,.1)', padding: '2px 7px', borderRadius: 6 }}>{e.category}</span>
+                  )}
+                  {e.budgetMin != null && e.budgetMax != null && e.budgetMax > 0 && (
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#EF9F27' }}>€{e.budgetMin}–{e.budgetMax}</span>
+                  )}
+                </div>
               </div>
-              <div style={{ marginTop: 8 }}>
-                <IntentBadge type={entry.intent_type} />
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

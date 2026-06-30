@@ -1,5 +1,6 @@
 import { action } from "./_generated/server"
 import { v } from "convex/values"
+import { api } from "./_generated/api"
 
 const SYSTEM_PROMPT = `Ти — AI-помічник платформи OTaska (маркетплейс послуг у Братиславі/Празі/Варшаві).
 Користувач написав свій запит. ПЕРШЕ що ти маєш зробити — визначити ХТО ПИШЕ.
@@ -121,5 +122,68 @@ export const chat = action({
     }
 
     return content
+  },
+})
+
+// AI matching: given one entry, find relevant open entries from other users
+export const findMatches = action({
+  args: { entryId: v.id("entries") },
+  handler: async (ctx, { entryId }) => {
+    const entry = await ctx.runQuery(api.entries.get, { id: entryId })
+    if (!entry) return []
+
+    const allOpen = await ctx.runQuery(api.entries.listOpen, {})
+    const others = allOpen.filter((e: { _id: string; clientId: string }) => e._id !== entryId && e.clientId !== entry.clientId)
+    if (others.length === 0) return []
+
+    const apiKey = process.env.OPENAI_API_KEY
+    if (!apiKey) return []
+
+    const entryDesc = `${entry.title}. ${entry.description ?? ''}. Місто: ${entry.city ?? 'невідомо'}. Категорія: ${entry.category ?? 'інше'}. Тип: ${entry.intentType}.`
+    const candidatesText = others.slice(0, 30).map((o: { _id: string; title: string; description?: string; city?: string; category?: string; intentType: string }, i: number) =>
+      `[${i}] id=${o._id} | ${o.title} | ${o.description ?? ''} | місто: ${o.city ?? '?'} | категорія: ${o.category ?? '?'} | тип: ${o.intentType}`
+    ).join('\n')
+
+    const prompt = `Ти — AI-матчер платформи OTaska. Твоя задача — знайти релевантні пропозиції для запису.
+
+ЗАПИС КОРИСТУВАЧА:
+${entryDesc}
+
+КАНДИДАТИ (інші відкриті записи):
+${candidatesText}
+
+Знайди записи які є релевантними для цього запису. Релевантність визначається:
+- Якщо один шукає послугу (seeking_service) → інший пропонує (offering_service) у тій самій сфері
+- Якщо один шукає роботу (seeking_job) → інший шукає виконавця (seeking_service/offering_service)
+- Схоже місто або загальні міста
+- Схожа категорія або суміжна сфера
+
+Поверни JSON масив індексів релевантних кандидатів (максимум 5), відсортованих за релевантністю:
+{"matches": [0, 3, 7]}`
+
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 100,
+        temperature: 0.2,
+        response_format: { type: "json_object" },
+      }),
+    })
+
+    if (!response.ok) return []
+    const data = await response.json() as { choices: Array<{ message: { content: string } }> }
+    const content = data.choices?.[0]?.message?.content
+    if (!content) return []
+
+    try {
+      const parsed = JSON.parse(content) as { matches?: number[] }
+      const indices: number[] = parsed.matches ?? []
+      return indices.filter((i: number) => i >= 0 && i < others.length).map((i: number) => others[i])
+    } catch {
+      return []
+    }
   },
 })
