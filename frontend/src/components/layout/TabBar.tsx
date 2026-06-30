@@ -1,4 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom'
+import { useQuery } from 'convex/react'
+import { api } from '../../../convex/_generated/api'
+import { useEffect, useRef } from 'react'
 
 const tabs = [
   {
@@ -39,9 +42,34 @@ const tabs = [
   },
 ]
 
+function playPop() {
+  try {
+    const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.frequency.setValueAtTime(880, ctx.currentTime)
+    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.12)
+    gain.gain.setValueAtTime(0.18, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18)
+    osc.start(ctx.currentTime)
+    osc.stop(ctx.currentTime + 0.18)
+  } catch { /* ignore */ }
+}
+
 export function TabBar() {
   const navigate = useNavigate()
   const location = useLocation()
+  const unread = useQuery(api.messages.unreadCount) ?? 0
+  const prevUnread = useRef(unread)
+
+  useEffect(() => {
+    if (unread > prevUnread.current && location.pathname !== '/app/chat') {
+      playPop()
+    }
+    prevUnread.current = unread
+  }, [unread, location.pathname])
 
   const openNew = () => {
     navigate('/app/new', { state: { backgroundLocation: location } })
@@ -73,11 +101,22 @@ export function TabBar() {
             </div>
           )
         }
-        const active = location.pathname === tab.path
+        const active = location.pathname === tab.path || location.pathname.startsWith(tab.path + '/')
+        const isChat = tab.path === '/app/chat'
         return (
-          <div key={tab.path} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, cursor: 'pointer', paddingTop: 6 }}
+          <div key={tab.path} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, cursor: 'pointer', paddingTop: 6, position: 'relative' }}
             onClick={() => navigate(tab.path)}>
-            {tab.icon(active)}
+            <div style={{ position: 'relative', display: 'inline-flex' }}>
+              {tab.icon(active)}
+              {isChat && unread > 0 && !active && (
+                <div style={{
+                  position: 'absolute', top: 0, right: -2,
+                  width: 8, height: 8, borderRadius: '50%',
+                  background: '#EF9F27',
+                  border: '1.5px solid rgba(249,249,249,.94)',
+                }} />
+              )}
+            </div>
             <span style={{ fontSize: 10, fontWeight: 600, color: active ? '#000' : '#8E8E93' }}>{tab.label}</span>
           </div>
         )
