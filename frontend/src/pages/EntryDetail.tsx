@@ -71,6 +71,7 @@ export function EntryDetail() {
   const callAI = useAction(api.ai.chat)
 
   // Edit state
+  const [menuOpen, setMenuOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -185,7 +186,28 @@ export function EntryDetail() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: '#F5F4F1', borderBottom: '1px solid #EDE8DF', position: 'sticky', top: 0, zIndex: 10 }}>
         <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#9A8060', display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'inherit' }}>← Назад</button>
         <span style={{ fontSize: 16, fontWeight: 700, color: '#1A1612' }}>{isProject ? 'Проєкт' : 'Запис'}</span>
-        <button onClick={startEdit} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#EF9F27', fontWeight: 600, fontFamily: 'inherit' }}>Редагувати</button>
+        <div style={{ position: 'relative' }}>
+          <button onClick={() => setMenuOpen(o => !o)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
+            {[0,1,2].map(i => <div key={i} style={{ width: 4, height: 4, borderRadius: '50%', background: '#9A8060' }} />)}
+          </button>
+          {menuOpen && (
+            <>
+              <div style={{ position: 'fixed', inset: 0, zIndex: 19 }} onClick={() => setMenuOpen(false)} />
+              <div style={{ position: 'absolute', right: 0, top: '100%', zIndex: 20, background: '#fff', borderRadius: 14, boxShadow: '0 4px 24px rgba(0,0,0,.14)', border: '1px solid #EDE8DF', minWidth: 180, overflow: 'hidden' }}>
+                <button onClick={() => { setMenuOpen(false); startEdit() }}
+                  style={{ width: '100%', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, color: '#1A1612', fontFamily: 'inherit', textAlign: 'left', fontWeight: 500 }}>
+                  ✏️ Редагувати
+                </button>
+                <div style={{ height: 1, background: '#EDE8DF' }} />
+                <button onClick={() => { setMenuOpen(false); setConfirmDelete(true) }}
+                  style={{ width: '100%', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, color: '#DC2626', fontFamily: 'inherit', textAlign: 'left', fontWeight: 500 }}>
+                  🗑 Видалити {isProject ? 'проєкт' : 'запис'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       <div style={{ padding: '16px 16px 100px' }}>
@@ -295,12 +317,8 @@ export function EntryDetail() {
           </div>
         )}
 
-        {/* Delete */}
-        {!confirmDelete ? (
-          <button onClick={() => setConfirmDelete(true)} style={{ width: '100%', padding: 14, borderRadius: 14, background: 'transparent', border: '1.5px solid #FCA5A5', color: '#DC2626', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-            Видалити {isProject ? 'проєкт' : 'запис'}
-          </button>
-        ) : (
+        {/* Delete confirm */}
+        {confirmDelete && (
           <div style={{ background: '#fff', borderRadius: 14, padding: 16, border: '1.5px solid #FCA5A5' }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: '#1A1612', marginBottom: 12, textAlign: 'center' }}>Видалити?</div>
             <div style={{ display: 'flex', gap: 10 }}>
