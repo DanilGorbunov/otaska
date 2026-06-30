@@ -78,17 +78,22 @@ export const listMatchCounts = query({
       seeking_material: "seeking_material",
     }
 
-    const counts: Record<string, number> = {}
+    const counts: Record<string, { count: number; first?: { _id: string; title: string; city?: string; intentType: string } }> = {}
     for (const entry of mine) {
       const opp = oppositeIntent[entry.intentType ?? ""] ?? null
-      counts[entry._id] = others.filter(o => {
-        const categoryMatch = !entry.category || !o.category || o.category === entry.category
+      const matched = others.filter(o => {
+        const categoryMatch = !entry.category || !o.category || o.category === entry.category ||
+          entry.category === "Інше" || o.category === "Інше"
         const intentMatch = !opp || o.intentType === opp
         const cityMatch = !entry.city || !o.city ||
           o.city.toLowerCase().includes(entry.city.toLowerCase()) ||
           entry.city.toLowerCase().includes(o.city.toLowerCase())
-        return categoryMatch && intentMatch && cityMatch
-      }).length
+        return intentMatch && cityMatch && categoryMatch
+      })
+      counts[entry._id] = {
+        count: matched.length,
+        first: matched[0] ? { _id: matched[0]._id, title: matched[0].title, city: matched[0].city, intentType: matched[0].intentType } : undefined,
+      }
     }
     return counts
   },

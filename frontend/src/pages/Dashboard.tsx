@@ -93,25 +93,37 @@ export function Dashboard() {
               <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Записи</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {filteredEntries.map(e => {
-                  const count = matchCounts[e._id] ?? 0
+                  const m = matchCounts[e._id] as { count: number; first?: { _id: string; title: string; city?: string } } | undefined
+                  const count = m?.count ?? 0
+                  const first = m?.first
                   return (
                     <div key={e._id} onClick={() => navigate(`/app/entries/${e._id}`)}
-                      style={{ background: '#fff', borderRadius: 16, padding: '14px 16px', border: count > 0 ? '1.5px solid #EF9F27' : '1.5px solid #EDE8DF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: '#1A1612', marginBottom: 2 }}>{e.title}</div>
-                        <div style={{ fontSize: 12, color: '#9A8060' }}>
-                          {e.category}{e.city ? ` · ${e.city}` : ''}{e.budgetMin && e.budgetMax ? ` · €${e.budgetMin}–${e.budgetMax}` : ''}
+                      style={{ background: '#fff', borderRadius: 16, border: count > 0 ? '1.5px solid #EF9F27' : '1.5px solid #EDE8DF', cursor: 'pointer', overflow: 'hidden' }}>
+                      <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: '#1A1612', marginBottom: 2 }}>{e.title}</div>
+                          <div style={{ fontSize: 12, color: '#9A8060' }}>
+                            {e.category}{e.city ? ` · ${e.city}` : ''}{e.budgetMin && e.budgetMax ? ` · €${e.budgetMin}–${e.budgetMax}` : ''}
+                          </div>
                         </div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                         {count > 0
-                          ? <span style={{ fontSize: 12, fontWeight: 700, color: '#EF9F27', background: 'rgba(239,159,39,.12)', padding: '3px 8px', borderRadius: 20 }}>
+                          ? <span style={{ fontSize: 12, fontWeight: 700, color: '#EF9F27', background: 'rgba(239,159,39,.12)', padding: '3px 8px', borderRadius: 20, flexShrink: 0 }}>
                               {count} збіг{count === 1 ? '' : count < 5 ? 'и' : 'ів'}
                             </span>
-                          : <span style={{ fontSize: 12, color: '#B4A898', fontWeight: 500 }}>Шукаємо…</span>
+                          : <span style={{ fontSize: 12, color: '#B4A898', fontWeight: 500, flexShrink: 0 }}>Шукаємо…</span>
                         }
-                        <svg width="6" height="11" viewBox="0 0 7 13" fill="none" stroke="#C7C7CC" strokeWidth="2" strokeLinecap="round"><path d="M1 1.5l5 5-5 5" /></svg>
                       </div>
+                      {first && (
+                        <div onClick={ev => { ev.stopPropagation(); navigate(`/app/entries/${first._id}`) }}
+                          style={{ borderTop: '1px solid #FDE68A', background: 'rgba(239,159,39,.06)', padding: '9px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF9F27', flexShrink: 0 }} />
+                          <span style={{ fontSize: 12, fontWeight: 600, color: '#5A4A2E', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {first.title}
+                          </span>
+                          {first.city && <span style={{ fontSize: 11, color: '#9A8060', flexShrink: 0 }}>📍 {first.city}</span>}
+                          <svg width="5" height="9" viewBox="0 0 7 13" fill="none" stroke="#EF9F27" strokeWidth="2.5" strokeLinecap="round"><path d="M1 1.5l5 5-5 5"/></svg>
+                        </div>
+                      )}
                     </div>
                   )
                 })}
@@ -124,23 +136,23 @@ export function Dashboard() {
               <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Проєкти</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {filteredProjects.map(e => {
-                  const count = matchCounts[e._id] ?? 0
+                  const m = matchCounts[e._id] as { count: number; first?: { _id: string; title: string; city?: string } } | undefined
+                  const count = m?.count ?? 0
                   return (
                     <div key={e._id} onClick={() => navigate(`/app/entries/${e._id}`)}
-                      style={{ background: '#fff', borderRadius: 16, padding: '14px 16px', border: '1.5px solid #EDE8DF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}>
+                      style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #EDE8DF', cursor: 'pointer', overflow: 'hidden' }}>
+                      <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
                       <span style={{ fontSize: 20, flexShrink: 0 }}>📁</span>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 14, fontWeight: 700, color: '#1A1612' }}>{e.title}</div>
                         {e.city && <div style={{ fontSize: 12, color: '#9A8060', marginTop: 2 }}>{e.city}</div>}
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                        {count > 0
-                          ? <span style={{ fontSize: 12, fontWeight: 700, color: '#EF9F27', background: 'rgba(239,159,39,.12)', padding: '3px 8px', borderRadius: 20 }}>
-                              {count} збіг{count === 1 ? '' : count < 5 ? 'и' : 'ів'}
-                            </span>
-                          : <span style={{ fontSize: 12, color: '#B4A898', fontWeight: 500 }}>Шукаємо…</span>
-                        }
-                        <svg width="6" height="11" viewBox="0 0 7 13" fill="none" stroke="#C7C7CC" strokeWidth="2" strokeLinecap="round"><path d="M1 1.5l5 5-5 5" /></svg>
+                      {count > 0
+                        ? <span style={{ fontSize: 12, fontWeight: 700, color: '#EF9F27', background: 'rgba(239,159,39,.12)', padding: '3px 8px', borderRadius: 20, flexShrink: 0 }}>
+                            {count} збіг{count === 1 ? '' : count < 5 ? 'и' : 'ів'}
+                          </span>
+                        : <span style={{ fontSize: 12, color: '#B4A898', fontWeight: 500, flexShrink: 0 }}>Шукаємо…</span>
+                      }
                       </div>
                     </div>
                   )
