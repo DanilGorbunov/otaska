@@ -43,7 +43,7 @@ export function ChatConversation() {
   const myId = me?._id
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#F5F4F1' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#F5F4F1', maxWidth: 480, margin: '0 auto', width: '100%' }}>
       {/* Nav */}
       <div style={{ background: '#fff', borderBottom: '0.5px solid rgba(60,60,67,.18)', flexShrink: 0 }}>
         <div style={{ height: 56, display: 'flex', alignItems: 'center', padding: '0 12px', gap: 10 }}>
