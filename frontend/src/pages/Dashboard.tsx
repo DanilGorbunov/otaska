@@ -114,7 +114,7 @@ export function Dashboard() {
                             </span>
                           : count > 0
                             ? <span style={{ fontSize: 12, fontWeight: 700, color: '#EF9F27', background: 'rgba(239,159,39,.12)', padding: '3px 8px', borderRadius: 20, flexShrink: 0 }}>
-                                {count} збіг{count === 1 ? '' : count < 5 ? 'и' : 'ів'}
+                                {count}
                               </span>
                             : <span style={{ fontSize: 11, color: '#B4A898', flexShrink: 0 }}>0 збігів</span>
                         }
@@ -155,7 +155,7 @@ export function Dashboard() {
                       </div>
                       {count > 0
                         ? <span style={{ fontSize: 12, fontWeight: 700, color: '#EF9F27', background: 'rgba(239,159,39,.12)', padding: '3px 8px', borderRadius: 20, flexShrink: 0 }}>
-                            {count} збіг{count === 1 ? '' : count < 5 ? 'и' : 'ів'}
+                            {count}
                           </span>
                         : <span style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
                             {[0,1,2].map(i => <span key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: '#C0B49A', display: 'inline-block', animation: `dotPulse 1.4s ease-in-out ${i * 0.2}s infinite` }} />)}
