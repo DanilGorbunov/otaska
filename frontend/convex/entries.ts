@@ -74,7 +74,7 @@ export const listMatchCounts = query({
     const oppositeIntent: Record<string, string> = {
       seeking_service: "offering_service",
       offering_service: "seeking_service",
-      seeking_job: "offering_service",
+      seeking_job: "seeking_service",
       seeking_material: "seeking_material",
     }
 
