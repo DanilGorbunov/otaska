@@ -133,7 +133,8 @@ export const findMatches = action({
     if (!entry) return []
 
     const allOpen = await ctx.runQuery(api.entries.listOpen, {})
-    const others = allOpen.filter((e: { _id: string; clientId: string }) => e._id !== entryId && e.clientId !== entry.clientId)
+    const dismissed = new Set(entry.aiDismissedIds ?? [])
+    const others = allOpen.filter((e: { _id: string; clientId: string }) => e._id !== entryId && e.clientId !== entry.clientId && !dismissed.has(e._id))
     if (others.length === 0) return []
 
     const apiKey = process.env.OPENAI_API_KEY

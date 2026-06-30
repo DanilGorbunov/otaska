@@ -63,6 +63,17 @@ export const getByIds = query({
   },
 })
 
+export const dismissAiMatch = mutation({
+  args: { entryId: v.id("entries"), dismissId: v.string() },
+  handler: async (ctx, { entryId, dismissId }) => {
+    const entry = await ctx.db.get(entryId)
+    if (!entry) return
+    const dismissed = [...(entry.aiDismissedIds ?? []), dismissId]
+    const matchIds = (entry.aiMatchIds ?? []).filter(id => id !== dismissId)
+    await ctx.db.patch(entryId, { aiDismissedIds: dismissed, aiMatchIds: matchIds, aiMatchCount: matchIds.length, aiMatchFirstId: matchIds[0] ?? undefined })
+  },
+})
+
 export const saveAiMatchCache = mutation({
   args: {
     entryId: v.id("entries"),

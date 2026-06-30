@@ -72,6 +72,7 @@ export function EntryDetail() {
   const sendProposal = useMutation(api.proposals.create)
   const callAI = useAction(api.ai.chat)
   const findMatches = useAction(api.ai.findMatches)
+  const dismissMatch = useMutation(api.entries.dismissAiMatch)
 
   const isOwn = me?._id != null && entry?.clientId === me._id
 
@@ -335,17 +336,24 @@ export function EntryDetail() {
               </div>
             )}
             {aiMatches !== null && !loadingMatches && aiMatches.map(m => (
-              <div key={m._id} onClick={() => navigate(`/app/entries/${m._id}`)}
-                style={{ background: '#fff', borderRadius: 14, padding: '12px 14px', border: '1.5px solid #EDE8DF', marginBottom: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#EF9F27', flexShrink: 0 }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#1A1612' }}>{m.title}</div>
-                  <div style={{ fontSize: 12, color: '#9A8060' }}>
-                    {m.city && `📍 ${m.city}`}{m.category && ` · ${m.category}`}
-                    {m.budgetMin != null && m.budgetMax != null && m.budgetMax > 0 && ` · €${m.budgetMin}–${m.budgetMax}`}
+              <div key={m._id} style={{ background: '#fff', borderRadius: 14, border: '1.5px solid #EDE8DF', marginBottom: 8, overflow: 'hidden' }}>
+                <div style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#EF9F27', flexShrink: 0 }} />
+                  <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => navigate(`/app/entries/${m._id}`)}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#1A1612' }}>{m.title}</div>
+                    <div style={{ fontSize: 12, color: '#9A8060' }}>
+                      {m.city && `📍 ${m.city}`}{m.category && ` · ${m.category}`}
+                      {m.budgetMin != null && m.budgetMax != null && m.budgetMax > 0 && ` · €${m.budgetMin}–${m.budgetMax}`}
+                    </div>
                   </div>
+                  <button onClick={async e => {
+                    e.stopPropagation()
+                    setAiMatches(prev => prev ? prev.filter(x => x._id !== m._id) : prev)
+                    await dismissMatch({ entryId: id as Id<'entries'>, dismissId: m._id })
+                  }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', color: '#C0B49A', fontSize: 16, lineHeight: 1, flexShrink: 0 }} title="Відхилити">
+                    ×
+                  </button>
                 </div>
-                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#C0B49A" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
               </div>
             ))}
             {aiMatches !== null && !loadingMatches && (
