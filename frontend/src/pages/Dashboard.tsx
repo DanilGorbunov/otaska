@@ -138,14 +138,16 @@ export function Dashboard() {
           </div>
 
           {/* Search */}
-          <div style={{ padding: '0 16px 16px', position: 'relative' }}>
-            <svg style={{ position: 'absolute', left: 26, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
-              width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#9A8060" strokeWidth="2">
-              <circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" />
-            </svg>
-            <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Пошук у записах..."
-              style={{ width: '100%', padding: '10px 14px 10px 34px', borderRadius: 12, border: '1.5px solid #EDE8DF', fontSize: 14, color: '#1A1612', outline: 'none', background: '#fff', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+          <div style={{ padding: '0 16px 16px' }}>
+            <div style={{ position: 'relative' }}>
+              <svg style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
+                width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#9A8060" strokeWidth="2">
+                <circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" />
+              </svg>
+              <input value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="Пошук у записах..."
+                style={{ width: '100%', padding: '10px 14px 10px 34px', borderRadius: 12, border: '1.5px solid #EDE8DF', fontSize: 14, color: '#1A1612', outline: 'none', background: '#fff', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+            </div>
           </div>
 
           {/* Entries + Projects */}
