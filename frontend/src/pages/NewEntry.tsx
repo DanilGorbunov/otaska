@@ -6,40 +6,27 @@ import { api } from '../../convex/_generated/api'
 export function NewEntry() {
   const navigate = useNavigate()
   const createAndPublish = useMutation(api.entries.createAndPublish)
+  const createDraft = useMutation(api.entries.create)
   const [mode, setMode] = useState<'entry' | 'project'>('entry')
   const [text, setText] = useState('')
   const [projectTitle, setProjectTitle] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
-  const handleSubmit = async () => {
+  const buildArgs = () => mode === 'entry'
+    ? { title: text.slice(0, 80), description: text, intentType: 'seeking_service' as const, entryType: 'on_demand' as const, category: 'Інше', city: 'Bratislava', budgetMin: 0, budgetMax: 0 }
+    : { title: projectTitle.trim(), description: projectTitle.trim(), intentType: 'seeking_service' as const, entryType: 'project' as const, category: 'Проєкт', city: 'Bratislava', budgetMin: 0, budgetMax: 0 }
+
+  const handleSubmit = async (draft = false) => {
     const valid = mode === 'entry' ? text.trim() : projectTitle.trim()
     if (!valid) return
     setSubmitting(true)
     setError('')
     try {
-      if (mode === 'entry') {
-        await createAndPublish({
-          title: text.slice(0, 80),
-          description: text,
-          intentType: 'seeking_service',
-          entryType: 'on_demand',
-          category: 'Інше',
-          city: 'Bratislava',
-          budgetMin: 0,
-          budgetMax: 0,
-        })
+      if (draft) {
+        await createDraft(buildArgs())
       } else {
-        await createAndPublish({
-          title: projectTitle.trim(),
-          description: projectTitle.trim(),
-          intentType: 'seeking_service',
-          entryType: 'project',
-          category: 'Проєкт',
-          city: 'Bratislava',
-          budgetMin: 0,
-          budgetMax: 0,
-        })
+        await createAndPublish(buildArgs())
       }
       navigate(-1)
     } catch (e: unknown) {
@@ -141,29 +128,43 @@ export function NewEntry() {
           {error && <p style={{ fontSize: 13, color: '#DC2626', marginBottom: 10 }}>{error}</p>}
 
           {/* Actions */}
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={() => navigate(-1)} style={{
-              flex: 1, padding: 14, borderRadius: 14, border: 'none', cursor: 'pointer',
-              background: 'rgba(118,118,128,.12)', fontSize: 15, fontWeight: 500,
-              color: '#3C3C43', fontFamily: 'inherit',
-            }}>
-              Скасувати
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={(mode === 'entry' ? !text.trim() : !projectTitle.trim()) || submitting}
-              style={{
-                flex: 2, padding: 14, borderRadius: 14, border: 'none',
-                cursor: (mode === 'entry' ? text.trim() : projectTitle.trim()) ? 'pointer' : 'not-allowed',
-                background: (mode === 'entry' ? text.trim() : projectTitle.trim()) ? '#111111' : '#C7C7CC',
-                fontSize: 17, fontWeight: 700, color: '#fff', fontFamily: 'inherit',
-                transition: 'background .2s',
-              }}
-            >
-              {submitting
-                ? (mode === 'project' ? 'Створюємо...' : 'Публікуємо...')
-                : mode === 'project' ? 'Створити проєкт →' : 'Опублікувати →'}
-            </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => navigate(-1)} style={{
+                flex: 1, padding: 14, borderRadius: 14, border: 'none', cursor: 'pointer',
+                background: 'rgba(118,118,128,.12)', fontSize: 15, fontWeight: 500,
+                color: '#3C3C43', fontFamily: 'inherit',
+              }}>
+                Скасувати
+              </button>
+              <button
+                onClick={() => handleSubmit(false)}
+                disabled={(mode === 'entry' ? !text.trim() : !projectTitle.trim()) || submitting}
+                style={{
+                  flex: 2, padding: 14, borderRadius: 14, border: 'none',
+                  cursor: (mode === 'entry' ? text.trim() : projectTitle.trim()) ? 'pointer' : 'not-allowed',
+                  background: (mode === 'entry' ? text.trim() : projectTitle.trim()) ? '#111111' : '#C7C7CC',
+                  fontSize: 17, fontWeight: 700, color: '#fff', fontFamily: 'inherit',
+                  transition: 'background .2s',
+                }}
+              >
+                {submitting ? 'Зберігаємо...' : mode === 'project' ? 'Створити проєкт →' : 'Опублікувати →'}
+              </button>
+            </div>
+            {mode === 'entry' && (
+              <button
+                onClick={() => handleSubmit(true)}
+                disabled={!text.trim() || submitting}
+                style={{
+                  width: '100%', padding: '12px 14px', borderRadius: 14, border: '1.5px solid #EDE8DF',
+                  cursor: text.trim() ? 'pointer' : 'not-allowed',
+                  background: '#fff', fontSize: 14, fontWeight: 500,
+                  color: text.trim() ? '#5A4A2E' : '#C7C7CC', fontFamily: 'inherit',
+                }}
+              >
+                🔒 Зберегти як чернетку
+              </button>
+            )}
           </div>
         </div>
       </div>
