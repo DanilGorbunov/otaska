@@ -12,6 +12,8 @@ import type * as ai from "../ai.js";
 import type * as auth from "../auth.js";
 import type * as entries from "../entries.js";
 import type * as http from "../http.js";
+import type * as messages from "../messages.js";
+import type * as proposals from "../proposals.js";
 import type * as users from "../users.js";
 
 import type {
@@ -25,6 +27,8 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   entries: typeof entries;
   http: typeof http;
+  messages: typeof messages;
+  proposals: typeof proposals;
   users: typeof users;
 }>;
 

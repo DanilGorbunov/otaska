@@ -2,6 +2,16 @@ import { query, mutation } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { v } from "convex/values"
 
+export const getUser = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    const user = await ctx.db.get(userId)
+    if (!user) return null
+    const profile = await ctx.db.query("userProfiles").withIndex("by_user", q => q.eq("userId", userId)).first()
+    return { ...user, profile }
+  },
+})
+
 export const getMe = query({
   args: {},
   handler: async (ctx) => {

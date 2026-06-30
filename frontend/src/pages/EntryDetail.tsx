@@ -64,12 +64,37 @@ export function EntryDetail() {
   const navigate = useNavigate()
   const entry = useQuery(api.entries.get, id ? { id: id as Id<'entries'> } : 'skip')
   const tasks = useQuery(api.entries.listTasks, entry?.entryType === 'project' && id ? { projectId: id as Id<'entries'> } : 'skip') ?? []
+  const me = useQuery(api.users.getMe)
   const updateEntry = useMutation(api.entries.update)
   const removeEntry = useMutation(api.entries.remove)
   const createTask = useMutation(api.entries.createTask)
   const publishTask = useMutation(api.entries.publishTask)
+  const sendProposal = useMutation(api.proposals.create)
   const callAI = useAction(api.ai.chat)
   const findMatches = useAction(api.ai.findMatches)
+
+  const isOwn = me?._id != null && entry?.clientId === me._id
+
+  // Proposal sheet
+  const [proposalOpen, setProposalOpen] = useState(false)
+  const [propMsg, setPropMsg] = useState('')
+  const [propPrice, setPropPrice] = useState('')
+  const [propSending, setPropSending] = useState(false)
+
+  const handleSendProposal = async () => {
+    if (!propMsg.trim() || !id) return
+    setPropSending(true)
+    try {
+      await sendProposal({ entryId: id as Id<'entries'>, message: propMsg, price: propPrice ? Number(propPrice) : undefined })
+      setProposalOpen(false)
+      setPropMsg(''); setPropPrice('')
+      if (entry) navigate(`/app/chat/${entry.clientId}`)
+    } catch (e: unknown) {
+      alert((e as Error)?.message ?? 'Помилка')
+    } finally {
+      setPropSending(false)
+    }
+  }
 
   // AI matches
   const [aiMatches, setAiMatches] = useState<Array<{ _id: string; title: string; city?: string; category?: string; intentType: string; budgetMin?: number; budgetMax?: number }> | null>(null)
@@ -192,7 +217,14 @@ export function EntryDetail() {
         <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#9A8060', display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'inherit' }}>← Назад</button>
         <span style={{ fontSize: 16, fontWeight: 700, color: '#1A1612' }}>{isProject ? 'Проєкт' : 'Запис'}</span>
         <div style={{ position: 'relative' }}>
-          <button onClick={() => setMenuOpen(o => !o)}
+          {/* For other user's entries: link to their profile */}
+          {!isOwn && entry.clientId && (
+            <button onClick={() => navigate(`/app/users/${entry.clientId}`)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', fontSize: 13, color: '#9A8060', fontFamily: 'inherit' }}>
+              👤 Профіль
+            </button>
+          )}
+          <button onClick={() => setMenuOpen(o => !o)} style={{ display: isOwn ? undefined : 'none' }}
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
             {[0,1,2].map(i => <div key={i} style={{ width: 4, height: 4, borderRadius: '50%', background: '#9A8060' }} />)}
           </button>
@@ -365,8 +397,21 @@ export function EntryDetail() {
           </>
         )}
 
-        {/* ── ENTRY: Proposals ── */}
-        {!isProject && (
+        {/* ── ENTRY: Action buttons ── */}
+        {!isProject && !isOwn && entry.status === 'open' && (
+          <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+            <button onClick={() => entry && navigate(`/app/chat/${entry.clientId}`)}
+              style={{ flex: 1, padding: '14px', borderRadius: 14, border: '1.5px solid #EDE8DF', background: '#fff', cursor: 'pointer', fontSize: 15, fontWeight: 600, color: '#1A1612', fontFamily: 'inherit' }}>
+              ✉️ Написати
+            </button>
+            <button onClick={() => setProposalOpen(true)}
+              style={{ flex: 2, padding: '14px', borderRadius: 14, border: 'none', background: '#1A1612', cursor: 'pointer', fontSize: 15, fontWeight: 700, color: '#fff', fontFamily: 'inherit' }}>
+              💼 Надіслати пропозицію
+            </button>
+          </div>
+        )}
+
+        {!isProject && isOwn && (
           <div style={{ background: '#fff', borderRadius: 16, padding: '20px 16px', border: '1.5px solid #EDE8DF', textAlign: 'center', marginBottom: 16 }}>
             <div style={{ fontSize: 30, marginBottom: 8 }}>🔍</div>
             <div style={{ fontSize: 14, fontWeight: 600, color: '#1A1612', marginBottom: 4 }}>Шукаємо виконавців</div>
@@ -443,6 +488,41 @@ export function EntryDetail() {
           onDone={handlePublishDone}
           onClose={() => setPublishChat(null)}
         />
+      )}
+
+      {/* Proposal sheet */}
+      {proposalOpen && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(6px)' }} onClick={() => setProposalOpen(false)} />
+          <div style={{ position: 'relative', width: '100%', maxWidth: 480, zIndex: 201, background: '#F5F4F1', borderRadius: '24px 24px 0 0', padding: '20px 16px calc(40px + env(safe-area-inset-bottom, 0px))', boxShadow: '0 -8px 48px rgba(0,0,0,.22)' }}>
+            <div style={{ width: 36, height: 4, borderRadius: 99, background: '#D1C8B8', margin: '-8px auto 16px' }} />
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#1A1612', marginBottom: 16 }}>Надіслати пропозицію</div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#9A8060', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8 }}>Ваша ціна (€)</div>
+              <input type="number" value={propPrice} onChange={e => setPropPrice(e.target.value)}
+                placeholder="Наприклад: 150"
+                style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1.5px solid #EDE8DF', fontSize: 16, outline: 'none', fontFamily: 'inherit', background: '#fff', boxSizing: 'border-box' }}
+                onFocus={e => { e.currentTarget.style.borderColor = '#EF9F27' }}
+                onBlur={e => { e.currentTarget.style.borderColor = '#EDE8DF' }} />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#9A8060', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8 }}>Повідомлення</div>
+              <textarea value={propMsg} onChange={e => setPropMsg(e.target.value)}
+                placeholder="Розкажіть про себе і чому ви підходите для цієї роботи..."
+                rows={4}
+                style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1.5px solid #EDE8DF', fontSize: 15, outline: 'none', fontFamily: 'inherit', background: '#fff', resize: 'none', lineHeight: 1.5, boxSizing: 'border-box' }}
+                onFocus={e => { e.currentTarget.style.borderColor = '#EF9F27' }}
+                onBlur={e => { e.currentTarget.style.borderColor = '#EDE8DF' }} />
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setProposalOpen(false)} style={{ flex: 1, padding: 14, borderRadius: 14, border: 'none', cursor: 'pointer', background: 'rgba(118,118,128,.12)', fontSize: 15, fontWeight: 500, color: '#3C3C43', fontFamily: 'inherit' }}>Скасувати</button>
+              <button onClick={handleSendProposal} disabled={!propMsg.trim() || propSending}
+                style={{ flex: 2, padding: 14, borderRadius: 14, border: 'none', cursor: propMsg.trim() ? 'pointer' : 'not-allowed', background: propMsg.trim() ? '#1A1612' : '#C7C7CC', fontSize: 15, fontWeight: 700, color: '#fff', fontFamily: 'inherit' }}>
+                {propSending ? 'Надсилаємо...' : '💼 Надіслати →'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
