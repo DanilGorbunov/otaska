@@ -436,13 +436,6 @@ export function EntryDetail() {
           </div>
         )}
 
-        {!isProject && isOwn && (
-          <div style={{ background: '#fff', borderRadius: 16, padding: '20px 16px', border: '1.5px solid #EDE8DF', textAlign: 'center', marginBottom: 16 }}>
-            <div style={{ fontSize: 30, marginBottom: 8 }}>🔍</div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: '#1A1612', marginBottom: 4 }}>Шукаємо виконавців</div>
-            <div style={{ fontSize: 13, color: '#9A8060' }}>Сповістимо коли хтось відгукнеться</div>
-          </div>
-        )}
 
         {/* Delete confirm */}
         {confirmDelete && (
