@@ -16,9 +16,9 @@ function PublishChat({ state, onMsg, onDone, onClose }: {
 }) {
   const [input, setInput] = useState('')
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 90, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(6px)' }} onClick={onClose} />
-      <div style={{ position: 'relative', width: '100%', maxWidth: 480, zIndex: 100, background: '#F5F4F1', borderRadius: '24px 24px 0 0', maxHeight: '75dvh', display: 'flex', flexDirection: 'column', boxShadow: '0 -8px 48px rgba(0,0,0,.22)' }}>
+      <div style={{ position: 'relative', width: '100%', maxWidth: 480, zIndex: 201, background: '#F5F4F1', borderRadius: '24px 24px 0 0', maxHeight: '75dvh', display: 'flex', flexDirection: 'column', boxShadow: '0 -8px 48px rgba(0,0,0,.22)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div style={{ width: 36, height: 4, borderRadius: 99, background: '#D1C8B8', margin: '12px auto 0', flexShrink: 0 }} />
         <div style={{ padding: '12px 16px 8px', fontSize: 16, fontWeight: 800, color: '#1A1612', flexShrink: 0 }}>Публікація таску</div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px 8px' }}>
