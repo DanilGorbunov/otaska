@@ -20,7 +20,7 @@ export function Dashboard() {
   const [search, setSearch] = useState('')
 
   const projects = myEntries.filter(e => e.entryType === 'project')
-  const entries = myEntries.filter(e => e.entryType !== 'project')
+  const entries = myEntries.filter(e => e.entryType !== 'project' && !e.projectId)
   const active = entries.filter(e => ['open', 'matched', 'booked', 'in_progress'].includes(e.status ?? '')).length
   const done = entries.filter(e => e.status === 'done').length
   const filteredEntries = entries.filter(e => (e.title ?? '').toLowerCase().includes(search.toLowerCase()))
