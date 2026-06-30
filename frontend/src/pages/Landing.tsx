@@ -178,34 +178,17 @@ export function Landing() {
         setMsgs(prev => [...prev, { role: 'assistant', content: `Публікуємо ${goalCount === 2 ? 'твої цілі' : 'твій запис'}…` }])
         setAuthLoading(true)
         try {
-          await signIn('password', { email: updatedForm.email, password: updatedForm.password, name: updatedForm.name, flow: 'signUp' })
           const city = updatedForm.city || 'Bratislava'
 
-          const publishGoal = async (r: AIResult | null, description: string) => {
-            if (!r) return null
-            return createAndPublish({
-              title: r.title ?? description.slice(0, 200),
-              description,
-              intentType: r.intentType as 'seeking_service' | 'offering_service' | 'seeking_material' | 'seeking_job',
-              entryType: r.entryType as 'on_demand' | 'project' | 'material',
-              category: r.category,
-              city,
-              budgetMin: r.budgetMin,
-              budgetMax: r.budgetMax,
-            }).catch(() => null)
-          }
+          // Save pending entries to localStorage BEFORE signIn so auth token is ready when Dashboard reads them
+          const pending = []
+          if (aiResult) pending.push({ title: aiResult.title ?? task.slice(0, 80), description: task, intentType: aiResult.intentType, entryType: aiResult.entryType ?? 'on_demand', category: aiResult.category, city, budgetMin: aiResult.budgetMin, budgetMax: aiResult.budgetMax })
+          if (secondAiResult) { const t2 = msgs.find(m => m.card?.cardIndex === 1)?.card?.title ?? secondAiResult.title ?? ''; pending.push({ title: secondAiResult.title ?? t2.slice(0, 80), description: t2, intentType: secondAiResult.intentType, entryType: secondAiResult.entryType ?? 'on_demand', category: secondAiResult.category, city, budgetMin: secondAiResult.budgetMin, budgetMax: secondAiResult.budgetMax }) }
+          if (pending.length > 0) localStorage.setItem('otaska_pending_entries', JSON.stringify(pending))
 
-          const [id1, id2] = await Promise.all([
-            publishGoal(aiResult, task),
-            secondAiResult ? publishGoal(secondAiResult, msgs.find(m => m.card?.cardIndex === 1)?.card?.title ?? '') : Promise.resolve(null),
-          ])
+          await signIn('password', { email: updatedForm.email, password: updatedForm.password, name: updatedForm.name, flow: 'signUp' })
 
-          const goals = [
-            aiResult ? { id: id1 as string | null, aiResult: { emoji: aiResult.emoji, category: aiResult.category, title: aiResult.title, min: aiResult.budgetMin, max: aiResult.budgetMax, time: aiResult.details }, task } : null,
-            secondAiResult ? { id: id2 as string | null, aiResult: { emoji: secondAiResult.emoji, category: secondAiResult.category, title: secondAiResult.title, min: secondAiResult.budgetMin, max: secondAiResult.budgetMax, time: secondAiResult.details }, task: secondAiResult.title } : null,
-          ].filter(Boolean)
-
-          navigate('/app', { state: { newRegistration: { goals, city, name: updatedForm.name } } })
+          navigate('/app', { state: { newRegistration: { city, name: updatedForm.name } } })
         } catch (err: unknown) {
           const msg = (err as Error)?.message ?? ''
           setMsgs(prev => [...prev, { role: 'assistant', content: msg.includes('already') ? 'Цей email вже зареєстровано. Спробуй увійти.' : 'Помилка реєстрації. Спробуй ще раз.' }])
