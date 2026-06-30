@@ -47,6 +47,7 @@ function RouterContent() {
           <Route path="chat" element={<Chat />} />
           <Route path="profile" element={<Profile />} />
           <Route path="users/:id" element={<ProviderProfile />} />
+          <Route path="create" element={<Landing />} />
         </Route>
       </Routes>
 

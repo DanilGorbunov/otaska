@@ -126,7 +126,7 @@ export function Dashboard() {
               </div>
             </div>
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/app/create')}
               style={{ width: 44, height: 44, borderRadius: 22, background: '#EF9F27', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(239,159,39,.35)', flexShrink: 0 }}
             >
               <span style={{ fontSize: 24, color: '#1A1612', lineHeight: 1 }}>+</span>
@@ -153,7 +153,8 @@ export function Dashboard() {
               <div style={{ fontSize: 17, fontWeight: 700, color: '#1A1612', marginBottom: 8 }}>Ще немає записів</div>
               <div style={{ fontSize: 14, color: '#9A8060', marginBottom: 24 }}>Натисни + щоб додати перший запис</div>
               <button onClick={() => navigate('/')}
-                style={{ padding: '14px 28px', borderRadius: 14, background: '#EF9F27', border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 700, color: '#1A1612', fontFamily: 'system-ui' }}>
+                onClick={() => navigate('/app/create')}
+              style={{ padding: '14px 28px', borderRadius: 14, background: '#EF9F27', border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 700, color: '#1A1612', fontFamily: 'system-ui' }}>
                 Додати запис →
               </button>
             </div>

@@ -2,6 +2,7 @@ import { useRef, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthActions } from '@convex-dev/auth/react'
 import { useMutation, useAction } from 'convex/react'
+import { useConvexAuth } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 
 type Step = 1 | 2
@@ -26,6 +27,7 @@ const STEP_NAMES = ['ПИШУ', 'AI', 'РЕЄСТРАЦІЯ']
 export function Landing() {
   const navigate = useNavigate()
   const { signIn } = useAuthActions()
+  const { isAuthenticated } = useConvexAuth()
   const createAndPublish = useMutation(api.entries.createAndPublish)
   const callAI = useAction(api.ai.chat)
 
@@ -57,11 +59,47 @@ export function Landing() {
   ]
 
   const startRegFields = () => {
+    if (isAuthenticated) {
+      // already logged in — publish immediately
+      publishForAuthenticatedUser()
+      return
+    }
     setRegMode(true)
     setRegStep(0)
     setForm({ name: '', email: '', password: '', city: '' })
     setMsgs(prev => [...prev, { role: 'assistant', content: REG_QUESTIONS[0].question }])
     setChips([])
+  }
+
+  const publishForAuthenticatedUser = async () => {
+    setAuthLoading(true)
+    setMsgs(prev => [...prev, { role: 'assistant', content: 'Публікуємо запис…' }])
+    try {
+      const city = 'Bratislava'
+      const publishGoal = async (r: AIResult | null, description: string) => {
+        if (!r) return null
+        return createAndPublish({
+          title: r.title ?? description.slice(0, 200),
+          description,
+          intentType: r.intentType as 'seeking_service' | 'offering_service' | 'seeking_material' | 'seeking_job',
+          entryType: r.entryType as 'on_demand' | 'project' | 'material',
+          category: r.category,
+          city,
+          budgetMin: r.budgetMin,
+          budgetMax: r.budgetMax,
+        }).catch(() => null)
+      }
+      await Promise.all([
+        publishGoal(aiResult, task),
+        secondAiResult ? publishGoal(secondAiResult, secondAiResult.title) : Promise.resolve(null),
+      ])
+      setMsgs(prev => [...prev, { role: 'assistant', content: '✓ Опубліковано! Переходимо до кабінету…' }])
+      setTimeout(() => navigate('/app'), 1200)
+    } catch {
+      setMsgs(prev => [...prev, { role: 'assistant', content: 'Помилка публікації. Спробуй ще раз.' }])
+    } finally {
+      setAuthLoading(false)
+    }
   }
 
   const sendToAI = async (messages: ChatMsg[]) => {
@@ -172,13 +210,15 @@ export function Landing() {
         setRegStep(s => s + 1)
       }, 300)
     } else {
-      // all fields collected → register
+      // all fields collected → register (or just publish if already authenticated)
       setTimeout(async () => {
         const goalCount = secondAiResult ? 2 : 1
         setMsgs(prev => [...prev, { role: 'assistant', content: `Публікуємо ${goalCount === 2 ? 'твої цілі' : 'твій запис'}…` }])
         setAuthLoading(true)
         try {
-          await signIn('password', { email: updatedForm.email, password: updatedForm.password, name: updatedForm.name, flow: 'signUp' })
+          if (!isAuthenticated) {
+            await signIn('password', { email: updatedForm.email, password: updatedForm.password, name: updatedForm.name, flow: 'signUp' })
+          }
           const city = updatedForm.city || 'Bratislava'
 
           const publishGoal = async (r: AIResult | null, description: string) => {
@@ -279,9 +319,10 @@ export function Landing() {
             </span>
           </a>
           <Dots />
-          <button onClick={() => navigate('/login')} style={{ fontSize: 14, fontWeight: 500, color: '#9A8060', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'system-ui' }}>
-            Увійти
-          </button>
+          {isAuthenticated
+            ? <button onClick={() => navigate('/app')} style={{ fontSize: 14, fontWeight: 500, color: '#9A8060', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'system-ui' }}>✕ Закрити</button>
+            : <button onClick={() => navigate('/login')} style={{ fontSize: 14, fontWeight: 500, color: '#9A8060', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'system-ui' }}>Увійти</button>
+          }
         </div>
       </nav>
 

@@ -44,8 +44,7 @@ export function TabBar() {
   const location = useLocation()
 
   const openNew = () => {
-    // Pass current location as background so NewEntry renders as overlay
-    navigate('/app/new', { state: { backgroundLocation: location } })
+    navigate('/app/create')
   }
 
   return (
