@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useAction } from 'convex/react'
 import { api } from '../../convex/_generated/api'
@@ -96,9 +96,20 @@ export function EntryDetail() {
     }
   }
 
-  // AI matches
+  // AI matches — auto-run on mount for own entries
   const [aiMatches, setAiMatches] = useState<Array<{ _id: string; title: string; city?: string; category?: string; intentType: string; budgetMin?: number; budgetMax?: number }> | null>(null)
   const [loadingMatches, setLoadingMatches] = useState(false)
+
+  useEffect(() => {
+    if (!isOwn || !id || !entry || entry.entryType === 'project' || entry.status !== 'open') return
+    if (aiMatches !== null || loadingMatches) return
+    setLoadingMatches(true)
+    findMatches({ entryId: id as Id<'entries'> })
+      .then(res => setAiMatches(res as typeof aiMatches))
+      .catch(() => setAiMatches([]))
+      .finally(() => setLoadingMatches(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOwn, id, entry?._id])
 
   // Edit state
   const [menuOpen, setMenuOpen] = useState(false)
@@ -286,51 +297,55 @@ export function EntryDetail() {
           )}
         </div>
 
-        {/* ── AI MATCHES ── */}
-        {!isProject && entry.status === 'open' && (
+        {/* ── AI MATCHES (own entries only, auto-run) ── */}
+        {isOwn && !isProject && entry.status === 'open' && (
           <div style={{ marginBottom: 16 }}>
-            {aiMatches === null && !loadingMatches && (
-              <button onClick={async () => {
-                setLoadingMatches(true)
-                try {
-                  const res = await findMatches({ entryId: id as Id<'entries'> })
-                  setAiMatches(res as typeof aiMatches)
-                } catch { setAiMatches([]) }
-                setLoadingMatches(false)
-              }} style={{ width: '100%', padding: '12px 16px', borderRadius: 14, border: '1.5px solid #EDE8DF', background: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600, color: '#EF9F27', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                ✦ Знайти AI-збіги
-              </button>
-            )}
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+              ✦ AI збіги
+              {loadingMatches && (
+                <span style={{ display: 'flex', gap: 3 }}>
+                  {[0,1,2].map(i => <span key={i} style={{ width: 4, height: 4, borderRadius: '50%', background: '#EF9F27', display: 'inline-block', animation: `dotA 1.3s ease-in-out ${i*0.2}s infinite` }} />)}
+                </span>
+              )}
+              {aiMatches !== null && !loadingMatches && (
+                <span style={{ color: '#EF9F27' }}>· {aiMatches.length} збіг{aiMatches.length === 1 ? '' : aiMatches.length < 5 ? 'и' : 'ів'}</span>
+              )}
+            </div>
             {loadingMatches && (
-              <div style={{ padding: '14px 16px', borderRadius: 14, border: '1.5px solid #EDE8DF', background: '#fff', fontSize: 13, color: '#9A8060', textAlign: 'center' }}>
-                ✦ AI аналізує збіги...
+              <div style={{ padding: '14px 16px', borderRadius: 14, border: '1.5px solid #EDE8DF', background: '#fff', fontSize: 13, color: '#9A8060' }}>
+                Аналізуємо пропозиції у вашому місті…
               </div>
             )}
-            {aiMatches !== null && !loadingMatches && (
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
-                  AI рекомендації · {aiMatches.length} збіг{aiMatches.length === 1 ? '' : aiMatches.length < 5 ? 'и' : 'ів'}
-                </div>
-                {aiMatches.length === 0 ? (
-                  <div style={{ padding: '12px 16px', borderRadius: 14, background: '#fff', border: '1.5px solid #EDE8DF', fontSize: 13, color: '#9A8060' }}>Збігів не знайдено</div>
-                ) : aiMatches.map(m => (
-                  <div key={m._id} onClick={() => navigate(`/app/entries/${m._id}`)}
-                    style={{ background: '#fff', borderRadius: 14, padding: '12px 14px', border: '1.5px solid #EDE8DF', marginBottom: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#EF9F27', flexShrink: 0 }} />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: '#1A1612' }}>{m.title}</div>
-                      <div style={{ fontSize: 12, color: '#9A8060' }}>
-                        {m.city && `📍 ${m.city}`}{m.category && ` · ${m.category}`}
-                        {m.budgetMin != null && m.budgetMax != null && m.budgetMax > 0 && ` · €${m.budgetMin}–${m.budgetMax}`}
-                      </div>
-                    </div>
-                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#C0B49A" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
-                  </div>
-                ))}
-                <button onClick={() => setAiMatches(null)} style={{ fontSize: 12, color: '#9A8060', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: 4 }}>
-                  Оновити
-                </button>
+            {aiMatches !== null && !loadingMatches && aiMatches.length === 0 && (
+              <div style={{ padding: '14px 16px', borderRadius: 14, background: '#fff', border: '1.5px solid #EDE8DF', fontSize: 13, color: '#9A8060' }}>
+                Поки збігів не знайдено — сповістимо коли з'являться
               </div>
+            )}
+            {aiMatches !== null && !loadingMatches && aiMatches.map(m => (
+              <div key={m._id} onClick={() => navigate(`/app/entries/${m._id}`)}
+                style={{ background: '#fff', borderRadius: 14, padding: '12px 14px', border: '1.5px solid #EDE8DF', marginBottom: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#EF9F27', flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#1A1612' }}>{m.title}</div>
+                  <div style={{ fontSize: 12, color: '#9A8060' }}>
+                    {m.city && `📍 ${m.city}`}{m.category && ` · ${m.category}`}
+                    {m.budgetMin != null && m.budgetMax != null && m.budgetMax > 0 && ` · €${m.budgetMin}–${m.budgetMax}`}
+                  </div>
+                </div>
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#C0B49A" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
+              </div>
+            ))}
+            {aiMatches !== null && !loadingMatches && (
+              <button onClick={() => {
+                setAiMatches(null)
+                setLoadingMatches(true)
+                findMatches({ entryId: id as Id<'entries'> })
+                  .then(res => setAiMatches(res as typeof aiMatches))
+                  .catch(() => setAiMatches([]))
+                  .finally(() => setLoadingMatches(false))
+              }} style={{ fontSize: 12, color: '#9A8060', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: 2 }}>
+                ↻ Оновити
+              </button>
             )}
           </div>
         )}
