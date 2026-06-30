@@ -91,7 +91,13 @@ export function EntryDetail() {
       setPropMsg(''); setPropPrice('')
       if (entry) navigate(`/app/chat/${entry.clientId}`)
     } catch (e: unknown) {
-      alert((e as Error)?.message ?? 'Помилка')
+      const msg = (e as Error)?.message ?? ''
+      if (msg.includes('Already proposed') && entry) {
+        setProposalOpen(false)
+        navigate(`/app/chat/${entry.clientId}`)
+      } else {
+        alert(msg || 'Помилка')
+      }
     } finally {
       setPropSending(false)
     }
