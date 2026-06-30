@@ -110,7 +110,9 @@ export function Dashboard() {
                           ? <span style={{ fontSize: 12, fontWeight: 700, color: '#EF9F27', background: 'rgba(239,159,39,.12)', padding: '3px 8px', borderRadius: 20, flexShrink: 0 }}>
                               {count} збіг{count === 1 ? '' : count < 5 ? 'и' : 'ів'}
                             </span>
-                          : <span style={{ fontSize: 12, color: '#B4A898', fontWeight: 500, flexShrink: 0 }}>Шукаємо…</span>
+                          : <span style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
+                            {[0,1,2].map(i => <span key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: '#C0B49A', display: 'inline-block', animation: `dotPulse 1.4s ease-in-out ${i * 0.2}s infinite` }} />)}
+                          </span>
                         }
                       </div>
                       {first && (
@@ -151,7 +153,9 @@ export function Dashboard() {
                         ? <span style={{ fontSize: 12, fontWeight: 700, color: '#EF9F27', background: 'rgba(239,159,39,.12)', padding: '3px 8px', borderRadius: 20, flexShrink: 0 }}>
                             {count} збіг{count === 1 ? '' : count < 5 ? 'и' : 'ів'}
                           </span>
-                        : <span style={{ fontSize: 12, color: '#B4A898', fontWeight: 500, flexShrink: 0 }}>Шукаємо…</span>
+                        : <span style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
+                            {[0,1,2].map(i => <span key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: '#C0B49A', display: 'inline-block', animation: `dotPulse 1.4s ease-in-out ${i * 0.2}s infinite` }} />)}
+                          </span>
                       }
                       </div>
                     </div>
@@ -162,7 +166,7 @@ export function Dashboard() {
           )}
         </div>
       )}
-      <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }`}</style>
+      <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} } @keyframes dotPulse { 0%,80%,100%{transform:scale(.6);opacity:.4} 40%{transform:scale(1);opacity:1} }`}</style>
     </div>
   )
 }
