@@ -46,10 +46,12 @@ export default defineSchema({
     currency: v.string(),
     skills: v.optional(v.array(v.string())),
     urgency: v.optional(v.string()),
+    projectId: v.optional(v.id("entries")),
   })
     .index("by_client", ["clientId"])
     .index("by_status", ["status"])
-    .index("by_intent", ["intentType"]),
+    .index("by_intent", ["intentType"])
+    .index("by_project", ["projectId"]),
 
   proposals: defineTable({
     entryId: v.id("entries"),
