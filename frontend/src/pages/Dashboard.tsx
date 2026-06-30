@@ -93,17 +93,14 @@ export function Dashboard() {
               <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Записи</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {filteredEntries.map(e => {
-                  const aiCount = e.aiMatchCount
-                  const m = matchCounts[e._id] as { count: number; first?: { _id: string; title: string; city?: string } } | undefined
-                  const hasAi = aiCount != null
-                  const count = hasAi ? aiCount : (m?.count ?? 0)
-                  const first = hasAi
-                    ? (e.aiMatchFirstId ? { _id: e.aiMatchFirstId, title: e.aiMatchFirstTitle ?? '', city: e.aiMatchFirstCity } : undefined)
-                    : m?.first
-                  const isLoaded = hasAi || m != null
+                  const hasAi = e.aiMatchCount != null
+                  const count = e.aiMatchCount ?? 0
+                  const first = hasAi && e.aiMatchFirstId
+                    ? { _id: e.aiMatchFirstId, title: e.aiMatchFirstTitle ?? '', city: e.aiMatchFirstCity }
+                    : undefined
                   return (
                     <div key={e._id} onClick={() => navigate(`/app/entries/${e._id}`)}
-                      style={{ background: '#fff', borderRadius: 16, border: count > 0 ? '1.5px solid #EF9F27' : '1.5px solid #EDE8DF', cursor: 'pointer', overflow: 'hidden' }}>
+                      style={{ background: '#fff', borderRadius: 16, border: hasAi && count > 0 ? '1.5px solid #EF9F27' : '1.5px solid #EDE8DF', cursor: 'pointer', overflow: 'hidden' }}>
                       <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 14, fontWeight: 700, color: '#1A1612', marginBottom: 2 }}>{e.title}</div>
@@ -111,7 +108,7 @@ export function Dashboard() {
                             {e.category}{e.city ? ` · ${e.city}` : ''}{e.budgetMin && e.budgetMax ? ` · €${e.budgetMin}–${e.budgetMax}` : ''}
                           </div>
                         </div>
-                        {!isLoaded
+                        {!hasAi
                           ? <span style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
                               {[0,1,2].map(i => <span key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: '#C0B49A', display: 'inline-block', animation: `dotPulse 1.4s ease-in-out ${i * 0.2}s infinite` }} />)}
                             </span>
