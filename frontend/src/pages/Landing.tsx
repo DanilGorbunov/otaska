@@ -136,7 +136,10 @@ export function Landing() {
       return
     }
 
-    const newMsgs: ChatMsg[] = [...msgs, { role: 'user', content: text }]
+    // for second goal: start a fresh AI context so it doesn't inherit first goal's details
+    const newMsgs: ChatMsg[] = secondGoalMode
+      ? [{ role: 'user', content: text }]
+      : [...msgs.filter(m => m.content.trim() !== ''), { role: 'user', content: text }]
     await sendToAI(newMsgs)
   }
 
