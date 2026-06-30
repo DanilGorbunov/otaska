@@ -289,9 +289,11 @@ export function EntryDetail() {
                         <div style={{ fontSize: 14, fontWeight: 600, color: '#1A1612' }}>{t.title}</div>
                         {t.category && <div style={{ fontSize: 12, color: '#9A8060' }}>{t.category}</div>}
                       </div>
-                      <button onClick={() => startPublish(t._id, t.title)}
-                        style={{ padding: '6px 12px', borderRadius: 20, background: '#EF9F27', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: '#1A1612', fontFamily: 'inherit', whiteSpace: 'nowrap' as const }}>
-                        Опублікувати →
+                      <button onClick={() => startPublish(t._id, t.title)} title="Опублікувати"
+                        style={{ width: 36, height: 36, borderRadius: '50%', background: '#EF9F27', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#1A1612" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M5 12h14M13 6l6 6-6 6" />
+                        </svg>
                       </button>
                     </div>
                   ))}
