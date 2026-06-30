@@ -213,16 +213,17 @@ export function EntryDetail() {
       <div style={{ padding: '16px 16px 100px' }}>
         {/* Header card */}
         <div style={{ background: '#fff', borderRadius: 18, padding: 20, border: '1.5px solid #EDE8DF', marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            {isProject && <span style={{ fontSize: 22 }}>📁</span>}
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase' as const, letterSpacing: 1 }}>
-              {isProject ? entry.title : entry.category ?? 'Запис'}
+          {!isProject && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase' as const, letterSpacing: 1 }}>
+                {entry.category ?? 'Запис'}
+              </div>
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <div style={{ width: 7, height: 7, borderRadius: '50%', background: statusColor }} />
+                <span style={{ fontSize: 12, color: statusColor, fontWeight: 600 }}>{statusLabel}</span>
+              </div>
             </div>
-            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5 }}>
-              <div style={{ width: 7, height: 7, borderRadius: '50%', background: statusColor }} />
-              <span style={{ fontSize: 12, color: statusColor, fontWeight: 600 }}>{statusLabel}</span>
-            </div>
-          </div>
+          )}
           <h1 style={{ fontSize: 20, fontWeight: 800, color: '#1A1612', margin: '0 0 8px', lineHeight: 1.3 }}>{entry.title}</h1>
           {entry.description && entry.description !== entry.title && (
             <p style={{ fontSize: 14, color: '#5A4A2E', lineHeight: 1.6, margin: '0 0 12px' }}>{entry.description}</p>
