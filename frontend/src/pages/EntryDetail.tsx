@@ -265,13 +265,13 @@ export function EntryDetail() {
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase' as const, letterSpacing: 1, marginBottom: 8 }}>Опубліковані</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {openTasks.map(t => (
-                    <div key={t._id} style={{ background: '#fff', borderRadius: 14, padding: '12px 14px', border: '1.5px solid #EDE8DF', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div key={t._id} onClick={() => navigate(`/app/entry/${t._id}`)} style={{ background: '#fff', borderRadius: 14, padding: '12px 14px', border: '1.5px solid #EDE8DF', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
                       <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22C55E', flexShrink: 0 }} />
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 14, fontWeight: 600, color: '#1A1612' }}>{t.title}</div>
                         {t.budgetMin && t.budgetMax && <div style={{ fontSize: 12, color: '#EF9F27', fontWeight: 700 }}>€{t.budgetMin}–{t.budgetMax}</div>}
                       </div>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: '#22C55E', background: 'rgba(34,197,94,.1)', padding: '3px 8px', borderRadius: 20 }}>відкрито</span>
+                      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#C0B49A" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
                     </div>
                   ))}
                 </div>
@@ -284,13 +284,13 @@ export function EntryDetail() {
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase' as const, letterSpacing: 1, marginBottom: 8 }}>Чернетки</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {draftTasks.map(t => (
-                    <div key={t._id} style={{ background: '#fff', borderRadius: 14, padding: '12px 14px', border: '1.5px solid #EDE8DF', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div key={t._id} onClick={() => navigate(`/app/entry/${t._id}`)} style={{ background: '#fff', borderRadius: 14, padding: '12px 14px', border: '1.5px solid #EDE8DF', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
                       <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#D1C8B8', flexShrink: 0 }} />
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 14, fontWeight: 600, color: '#1A1612' }}>{t.title}</div>
                         {t.category && <div style={{ fontSize: 12, color: '#9A8060' }}>{t.category}</div>}
                       </div>
-                      <button onClick={() => startPublish(t._id, t.title)} title="Опублікувати"
+                      <button onClick={e => { e.stopPropagation(); startPublish(t._id, t.title) }} title="Опублікувати"
                         style={{ width: 36, height: 36, borderRadius: '50%', background: '#EF9F27', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#1A1612" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M5 12h14M13 6l6 6-6 6" />
