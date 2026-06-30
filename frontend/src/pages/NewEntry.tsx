@@ -1,27 +1,51 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAppStore } from '../store/appStore'
+import { useMutation } from 'convex/react'
+import { api } from '../../convex/_generated/api'
 
 export function NewEntry() {
   const navigate = useNavigate()
-  const { addEntry, addProject } = useAppStore()
+  const createAndPublish = useMutation(api.entries.createAndPublish)
   const [mode, setMode] = useState<'entry' | 'project'>('entry')
   const [text, setText] = useState('')
   const [projectTitle, setProjectTitle] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
 
   const handleSubmit = async () => {
     const valid = mode === 'entry' ? text.trim() : projectTitle.trim()
     if (!valid) return
     setSubmitting(true)
-    await new Promise(r => setTimeout(r, 600))
-    if (mode === 'entry') {
-      addEntry(text.slice(0, 80), text)
-    } else {
-      addProject(projectTitle.trim())
+    setError('')
+    try {
+      if (mode === 'entry') {
+        await createAndPublish({
+          title: text.slice(0, 80),
+          description: text,
+          intentType: 'seeking_service',
+          entryType: 'on_demand',
+          category: 'Інше',
+          city: 'Bratislava',
+          budgetMin: 0,
+          budgetMax: 0,
+        })
+      } else {
+        await createAndPublish({
+          title: projectTitle.trim(),
+          description: projectTitle.trim(),
+          intentType: 'seeking_service',
+          entryType: 'project',
+          category: 'Проєкт',
+          city: 'Bratislava',
+          budgetMin: 0,
+          budgetMax: 0,
+        })
+      }
+      navigate(-1)
+    } catch (e: unknown) {
+      setError((e as Error)?.message ?? 'Помилка. Спробуй ще раз.')
+      setSubmitting(false)
     }
-    setSubmitting(false)
-    navigate(-1)
   }
 
   return (
@@ -77,7 +101,7 @@ export function NewEntry() {
             ))}
           </div>
 
-          {/* Project title field (project mode only) */}
+          {/* Project title field */}
           {mode === 'project' && (
             <input
               value={projectTitle}
@@ -111,10 +135,10 @@ export function NewEntry() {
                 fontFamily: 'inherit', boxSizing: 'border-box',
               }}
             />
-
-            {/* Counter */}
             <div style={{ fontSize: 12, color: '#C7C7CC', marginTop: 6 }}>{text.length}/500</div>
           </div>
+
+          {error && <p style={{ fontSize: 13, color: '#DC2626', marginBottom: 10 }}>{error}</p>}
 
           {/* Actions */}
           <div style={{ display: 'flex', gap: 10 }}>
@@ -143,6 +167,8 @@ export function NewEntry() {
           </div>
         </div>
       </div>
+
+      <style>{`@keyframes sheetUp { from { transform: translateY(100%) } to { transform: translateY(0) } }`}</style>
     </div>
   )
 }
