@@ -71,20 +71,20 @@ export const listMatchCounts = query({
       .take(200)
     const others = allOpen.filter(e => e.clientId !== userId)
 
-    const oppositeIntent: Record<string, string> = {
-      seeking_service: "offering_service",
-      offering_service: "seeking_service",
-      seeking_job: "seeking_service",
-      seeking_material: "seeking_material",
+    const oppositeIntents: Record<string, string[]> = {
+      seeking_service: ["offering_service", "seeking_job"],
+      offering_service: ["seeking_service"],
+      seeking_job: ["seeking_service"],
+      seeking_material: ["seeking_material", "offering_service"],
     }
 
     const counts: Record<string, { count: number; first?: { _id: string; title: string; city?: string; intentType: string } }> = {}
     for (const entry of mine) {
-      const opp = oppositeIntent[entry.intentType ?? ""] ?? null
+      const opps = oppositeIntents[entry.intentType ?? ""] ?? []
       const matched = others.filter(o => {
         const categoryMatch = !entry.category || !o.category || o.category === entry.category ||
           entry.category === "Інше" || o.category === "Інше"
-        const intentMatch = !opp || o.intentType === opp
+        const intentMatch = opps.length === 0 || opps.includes(o.intentType ?? "")
         const cityMatch = !entry.city || !o.city ||
           o.city.toLowerCase().includes(entry.city.toLowerCase()) ||
           entry.city.toLowerCase().includes(o.city.toLowerCase())
