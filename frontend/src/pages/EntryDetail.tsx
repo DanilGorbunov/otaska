@@ -265,7 +265,7 @@ export function EntryDetail() {
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase' as const, letterSpacing: 1, marginBottom: 8 }}>Опубліковані</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {openTasks.map(t => (
-                    <div key={t._id} onClick={() => navigate(`/app/entry/${t._id}`)} style={{ background: '#fff', borderRadius: 14, padding: '12px 14px', border: '1.5px solid #EDE8DF', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                    <div key={t._id} onClick={() => navigate(`/app/entries/${t._id}`)} style={{ background: '#fff', borderRadius: 14, padding: '12px 14px', border: '1.5px solid #EDE8DF', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
                       <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22C55E', flexShrink: 0 }} />
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 14, fontWeight: 600, color: '#1A1612' }}>{t.title}</div>
@@ -284,7 +284,7 @@ export function EntryDetail() {
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase' as const, letterSpacing: 1, marginBottom: 8 }}>Чернетки</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {draftTasks.map(t => (
-                    <div key={t._id} onClick={() => navigate(`/app/entry/${t._id}`)} style={{ background: '#fff', borderRadius: 14, padding: '12px 14px', border: '1.5px solid #EDE8DF', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                    <div key={t._id} onClick={() => navigate(`/app/entries/${t._id}`)} style={{ background: '#fff', borderRadius: 14, padding: '12px 14px', border: '1.5px solid #EDE8DF', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
                       <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#D1C8B8', flexShrink: 0 }} />
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 14, fontWeight: 600, color: '#1A1612' }}>{t.title}</div>
