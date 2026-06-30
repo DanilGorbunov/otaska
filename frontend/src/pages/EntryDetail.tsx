@@ -216,7 +216,7 @@ export function EntryDetail() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             {isProject && <span style={{ fontSize: 22 }}>📁</span>}
             <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase' as const, letterSpacing: 1 }}>
-              {isProject ? 'Проєкт' : entry.category ?? 'Запис'}
+              {isProject ? entry.title : entry.category ?? 'Запис'}
             </div>
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5 }}>
               <div style={{ width: 7, height: 7, borderRadius: '50%', background: statusColor }} />
