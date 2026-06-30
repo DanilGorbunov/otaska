@@ -122,19 +122,11 @@ export function Dashboard() {
       {!newRegistration && !legacyEntry && (
         <div style={{ background: '#F5F4F1', minHeight: '100dvh', fontFamily: 'system-ui,-apple-system,sans-serif' }}>
           {/* Header */}
-          <div style={{ padding: '24px 16px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div>
-              <div style={{ fontSize: 26, fontWeight: 800, color: '#1A1612', letterSpacing: -0.5 }}>Мої записи</div>
-              <div style={{ fontSize: 13, color: '#9A8060', marginTop: 2 }}>
-                {active > 0 ? `${active} активних · ${done} виконано` : 'Немає активних записів'}
-              </div>
+          <div style={{ padding: '24px 16px 12px' }}>
+            <div style={{ fontSize: 26, fontWeight: 800, color: '#1A1612', letterSpacing: -0.5 }}>Мої записи</div>
+            <div style={{ fontSize: 13, color: '#9A8060', marginTop: 2 }}>
+              {active > 0 ? `${active} активних · ${done} виконано` : 'Немає активних записів'}
             </div>
-            <button
-              onClick={() => navigate('/app/new', { state: { backgroundLocation: location } })}
-              style={{ width: 44, height: 44, borderRadius: 22, background: '#EF9F27', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(239,159,39,.35)', flexShrink: 0 }}
-            >
-              <span style={{ fontSize: 24, color: '#1A1612', lineHeight: 1 }}>+</span>
-            </button>
           </div>
 
           {/* Search */}
