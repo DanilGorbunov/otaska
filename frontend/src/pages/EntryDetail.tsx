@@ -314,17 +314,6 @@ export function EntryDetail() {
         {/* ── AI MATCHES (own entries only, auto-run) ── */}
         {isOwn && !isProject && entry.status === 'open' && (
           <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-              ✦ AI збіги
-              {loadingMatches && (
-                <span style={{ display: 'flex', gap: 3 }}>
-                  {[0,1,2].map(i => <span key={i} style={{ width: 4, height: 4, borderRadius: '50%', background: '#EF9F27', display: 'inline-block', animation: `dotA 1.3s ease-in-out ${i*0.2}s infinite` }} />)}
-                </span>
-              )}
-              {aiMatches !== null && !loadingMatches && (
-                <span style={{ color: '#EF9F27' }}>· {aiMatches.length} збіг{aiMatches.length === 1 ? '' : aiMatches.length < 5 ? 'и' : 'ів'}</span>
-              )}
-            </div>
             {loadingMatches && (
               <div style={{ padding: '14px 16px', borderRadius: 14, border: '1.5px solid #EDE8DF', background: '#fff', fontSize: 13, color: '#9A8060' }}>
                 Аналізуємо пропозиції у вашому місті…
