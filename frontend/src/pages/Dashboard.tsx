@@ -7,7 +7,10 @@ export function Dashboard() {
   const navigate = useNavigate()
   const location = useLocation()
   const myEntries = useQuery(api.entries.listMine) ?? []
-  const matchCounts = useQuery(api.entries.listMatchCounts) ?? {}
+  const rawMatchCounts = useQuery(api.entries.listMatchCounts)
+  const matchCounts = rawMatchCounts ?? {}
+  console.log('[Dashboard] myEntries:', myEntries.map(e => ({ id: e._id, title: e.title, intentType: e.intentType, status: e.status })))
+  console.log('[Dashboard] matchCounts raw:', rawMatchCounts)
   const createAndPublish = useMutation(api.entries.createAndPublish)
   const [search, setSearch] = useState('')
   const [publishingPending, setPublishingPending] = useState(false)
