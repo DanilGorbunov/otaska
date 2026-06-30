@@ -106,7 +106,11 @@ export const listMatchCounts = query({
     const others = allOpen.filter(e => e.clientId !== userId)
 
     const counts: Record<string, { count: number; first?: { _id: string; title: string; city?: string; intentType: string } }> = {}
-    for (const entry of mine) {
+    const projects = mine.filter(e => e.entryType === 'project')
+    const nonProjects = mine.filter(e => e.entryType !== 'project' && !e.projectId)
+
+    // Non-project entries: city-based count (AI cache takes priority in Dashboard)
+    for (const entry of nonProjects) {
       const matched = others.filter(o => {
         if (o.entryType === 'project') return false
         const cityMatch = !entry.city || !o.city ||
@@ -119,6 +123,19 @@ export const listMatchCounts = query({
         first: matched[0] ? { _id: matched[0]._id, title: matched[0].title, city: matched[0].city, intentType: matched[0].intentType } : undefined,
       }
     }
+
+    // Projects: sum aiMatchCount of their open tasks
+    for (const project of projects) {
+      const tasks = await ctx.db.query("entries").withIndex("by_project", q => q.eq("projectId", project._id)).take(50)
+      const openTasks = tasks.filter(t => t.status === 'open' && t.aiMatchCount != null)
+      const total = openTasks.reduce((sum, t) => sum + (t.aiMatchCount ?? 0), 0)
+      const firstTask = openTasks.find(t => (t.aiMatchCount ?? 0) > 0 && t.aiMatchFirstId)
+      counts[project._id] = {
+        count: total,
+        first: firstTask?.aiMatchFirstId ? { _id: firstTask.aiMatchFirstId, title: firstTask.aiMatchFirstTitle ?? firstTask.title, city: firstTask.aiMatchFirstCity, intentType: '' } : undefined,
+      }
+    }
+
     return counts
   },
 })
