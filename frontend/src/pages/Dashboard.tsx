@@ -93,9 +93,14 @@ export function Dashboard() {
               <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Записи</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {filteredEntries.map(e => {
+                  const aiCount = e.aiMatchCount
                   const m = matchCounts[e._id] as { count: number; first?: { _id: string; title: string; city?: string } } | undefined
-                  const count = m?.count ?? 0
-                  const first = m?.first
+                  const hasAi = aiCount != null
+                  const count = hasAi ? aiCount : (m?.count ?? 0)
+                  const first = hasAi
+                    ? (e.aiMatchFirstId ? { _id: e.aiMatchFirstId, title: e.aiMatchFirstTitle ?? '', city: e.aiMatchFirstCity } : undefined)
+                    : m?.first
+                  const isLoaded = hasAi || m != null
                   return (
                     <div key={e._id} onClick={() => navigate(`/app/entries/${e._id}`)}
                       style={{ background: '#fff', borderRadius: 16, border: count > 0 ? '1.5px solid #EF9F27' : '1.5px solid #EDE8DF', cursor: 'pointer', overflow: 'hidden' }}>
@@ -106,13 +111,15 @@ export function Dashboard() {
                             {e.category}{e.city ? ` · ${e.city}` : ''}{e.budgetMin && e.budgetMax ? ` · €${e.budgetMin}–${e.budgetMax}` : ''}
                           </div>
                         </div>
-                        {count > 0
-                          ? <span style={{ fontSize: 12, fontWeight: 700, color: '#EF9F27', background: 'rgba(239,159,39,.12)', padding: '3px 8px', borderRadius: 20, flexShrink: 0 }}>
-                              {count} збіг{count === 1 ? '' : count < 5 ? 'и' : 'ів'}
+                        {!isLoaded
+                          ? <span style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
+                              {[0,1,2].map(i => <span key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: '#C0B49A', display: 'inline-block', animation: `dotPulse 1.4s ease-in-out ${i * 0.2}s infinite` }} />)}
                             </span>
-                          : <span style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
-                            {[0,1,2].map(i => <span key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: '#C0B49A', display: 'inline-block', animation: `dotPulse 1.4s ease-in-out ${i * 0.2}s infinite` }} />)}
-                          </span>
+                          : count > 0
+                            ? <span style={{ fontSize: 12, fontWeight: 700, color: '#EF9F27', background: 'rgba(239,159,39,.12)', padding: '3px 8px', borderRadius: 20, flexShrink: 0 }}>
+                                {count} збіг{count === 1 ? '' : count < 5 ? 'и' : 'ів'}
+                              </span>
+                            : <span style={{ fontSize: 11, color: '#B4A898', flexShrink: 0 }}>0 збігів</span>
                         }
                       </div>
                       {first && (

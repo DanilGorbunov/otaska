@@ -47,6 +47,10 @@ export default defineSchema({
     skills: v.optional(v.array(v.string())),
     urgency: v.optional(v.string()),
     projectId: v.optional(v.id("entries")),
+    aiMatchCount: v.optional(v.number()),
+    aiMatchFirstId: v.optional(v.string()),
+    aiMatchFirstTitle: v.optional(v.string()),
+    aiMatchFirstCity: v.optional(v.string()),
   })
     .index("by_client", ["clientId"])
     .index("by_status", ["status"])

@@ -181,7 +181,17 @@ ${candidatesText}
     try {
       const parsed = JSON.parse(content) as { matches?: number[] }
       const indices: number[] = parsed.matches ?? []
-      return indices.filter((i: number) => i >= 0 && i < others.length).map((i: number) => others[i])
+      const matched = indices.filter((i: number) => i >= 0 && i < others.length).map((i: number) => others[i])
+      // Cache results on the entry so Dashboard can show count without re-running AI
+      const first = matched[0] as { _id: string; title: string; city?: string } | undefined
+      await ctx.runMutation(api.entries.saveAiMatchCache, {
+        entryId,
+        count: matched.length,
+        firstId: first?._id,
+        firstTitle: first?.title,
+        firstCity: first?.city,
+      })
+      return matched
     } catch {
       return []
     }

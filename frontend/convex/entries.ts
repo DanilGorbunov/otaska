@@ -54,6 +54,19 @@ export const get = query({
   handler: async (ctx, { id }) => ctx.db.get(id),
 })
 
+export const saveAiMatchCache = mutation({
+  args: {
+    entryId: v.id("entries"),
+    count: v.number(),
+    firstId: v.optional(v.string()),
+    firstTitle: v.optional(v.string()),
+    firstCity: v.optional(v.string()),
+  },
+  handler: async (ctx, { entryId, count, firstId, firstTitle, firstCity }) => {
+    await ctx.db.patch(entryId, { aiMatchCount: count, aiMatchFirstId: firstId, aiMatchFirstTitle: firstTitle, aiMatchFirstCity: firstCity })
+  },
+})
+
 // Returns match counts for each of the user's entries:
 // opposite intentType in same category+city
 export const listMatchCounts = query({
