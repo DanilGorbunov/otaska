@@ -100,7 +100,7 @@ export function Dashboard() {
                     : undefined
                   return (
                     <div key={e._id} onClick={() => navigate(`/app/entries/${e._id}`)}
-                      style={{ background: '#fff', borderRadius: 16, border: hasAi && count > 0 ? '1.5px solid #EF9F27' : '1.5px solid #EDE8DF', cursor: 'pointer', overflow: 'hidden' }}>
+                      style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #EDE8DF', cursor: 'pointer', overflow: 'hidden' }}>
                       <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 14, fontWeight: 700, color: '#1A1612', marginBottom: 2 }}>{e.title}</div>
