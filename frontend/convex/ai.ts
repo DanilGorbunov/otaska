@@ -190,6 +190,7 @@ ${candidatesText}
         firstId: first?._id,
         firstTitle: first?.title,
         firstCity: first?.city,
+        matchIds: matched.map((m: { _id: string }) => m._id),
       })
       return matched
     } catch {

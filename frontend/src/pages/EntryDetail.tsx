@@ -96,20 +96,33 @@ export function EntryDetail() {
     }
   }
 
-  // AI matches — auto-run on mount for own entries
+  // AI matches — load from cache, run AI only if not cached yet
   const [aiMatches, setAiMatches] = useState<Array<{ _id: string; title: string; city?: string; category?: string; intentType: string; budgetMin?: number; budgetMax?: number }> | null>(null)
   const [loadingMatches, setLoadingMatches] = useState(false)
 
+  const cachedIds = entry?.aiMatchIds ?? null
+  const cachedEntries = useQuery(
+    api.entries.getByIds,
+    isOwn && cachedIds && cachedIds.length > 0 ? { ids: cachedIds } : 'skip'
+  )
+
   useEffect(() => {
-    if (!isOwn || !id || !entry || entry.entryType === 'project' || entry.status !== 'open') return
-    if (aiMatches !== null || loadingMatches) return
+    if (!isOwn || !entry || entry.entryType === 'project' || entry.status !== 'open') return
+    // If cache exists, use it
+    if (cachedIds !== null) {
+      if (cachedIds.length === 0) { setAiMatches([]); return }
+      if (cachedEntries !== undefined) setAiMatches(cachedEntries as typeof aiMatches)
+      return
+    }
+    // No cache — run AI
+    if (aiMatches !== null || loadingMatches || !id) return
     setLoadingMatches(true)
     findMatches({ entryId: id as Id<'entries'> })
       .then(res => setAiMatches(res as typeof aiMatches))
       .catch(() => setAiMatches([]))
       .finally(() => setLoadingMatches(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOwn, id, entry?._id])
+  }, [isOwn, id, entry?._id, cachedIds, cachedEntries])
 
   // Edit state
   const [menuOpen, setMenuOpen] = useState(false)
@@ -343,8 +356,8 @@ export function EntryDetail() {
                   .then(res => setAiMatches(res as typeof aiMatches))
                   .catch(() => setAiMatches([]))
                   .finally(() => setLoadingMatches(false))
-              }} style={{ fontSize: 12, color: '#9A8060', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: 2 }}>
-                ↻ Оновити
+              }} style={{ fontSize: 12, color: '#9A8060', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: 2, fontFamily: 'inherit' }}>
+                ↻ Оновити збіги
               </button>
             )}
           </div>

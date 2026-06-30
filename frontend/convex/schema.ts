@@ -51,6 +51,7 @@ export default defineSchema({
     aiMatchFirstId: v.optional(v.string()),
     aiMatchFirstTitle: v.optional(v.string()),
     aiMatchFirstCity: v.optional(v.string()),
+    aiMatchIds: v.optional(v.array(v.string())),
   })
     .index("by_client", ["clientId"])
     .index("by_status", ["status"])

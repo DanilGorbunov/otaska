@@ -1,6 +1,7 @@
 import { query, mutation } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { v } from "convex/values"
+import type { Id } from "./_generated/dataModel"
 
 const intentTypeV = v.union(
   v.literal("seeking_service"),
@@ -54,6 +55,14 @@ export const get = query({
   handler: async (ctx, { id }) => ctx.db.get(id),
 })
 
+export const getByIds = query({
+  args: { ids: v.array(v.string()) },
+  handler: async (ctx, { ids }) => {
+    const results = await Promise.all(ids.map(id => ctx.db.get(id as Id<"entries">)))
+    return results.filter(Boolean)
+  },
+})
+
 export const saveAiMatchCache = mutation({
   args: {
     entryId: v.id("entries"),
@@ -61,9 +70,10 @@ export const saveAiMatchCache = mutation({
     firstId: v.optional(v.string()),
     firstTitle: v.optional(v.string()),
     firstCity: v.optional(v.string()),
+    matchIds: v.optional(v.array(v.string())),
   },
-  handler: async (ctx, { entryId, count, firstId, firstTitle, firstCity }) => {
-    await ctx.db.patch(entryId, { aiMatchCount: count, aiMatchFirstId: firstId, aiMatchFirstTitle: firstTitle, aiMatchFirstCity: firstCity })
+  handler: async (ctx, { entryId, count, firstId, firstTitle, firstCity, matchIds }) => {
+    await ctx.db.patch(entryId, { aiMatchCount: count, aiMatchFirstId: firstId, aiMatchFirstTitle: firstTitle, aiMatchFirstCity: firstCity, aiMatchIds: matchIds })
   },
 })
 
