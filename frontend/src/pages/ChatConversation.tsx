@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
@@ -7,6 +7,7 @@ import type { Id } from '../../convex/_generated/dataModel'
 export function ChatConversation() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const partnerId = id as Id<'users'>
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -16,7 +17,8 @@ export function ChatConversation() {
   const sendMsg = useMutation(api.messages.send)
   const markRead = useMutation(api.messages.markRead)
 
-  const [input, setInput] = useState('')
+  const prefill = (location.state as { prefill?: string } | null)?.prefill ?? ''
+  const [input, setInput] = useState(prefill)
   const [sending, setSending] = useState(false)
 
   useEffect(() => {

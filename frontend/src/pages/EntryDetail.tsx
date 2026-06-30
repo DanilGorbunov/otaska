@@ -441,7 +441,7 @@ export function EntryDetail() {
         {/* ── ENTRY: Action buttons ── */}
         {!isProject && !isOwn && entry.status === 'open' && (
           <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-            <button onClick={() => entry && navigate(`/app/chat/${entry.clientId}`)}
+            <button onClick={() => entry && navigate(`/app/chat/${entry.clientId}`, { state: { prefill: `👋 Пишу щодо вашого запису «${entry.title}»: ` } })}
               style={{ flex: 1, padding: '14px', borderRadius: 14, border: '1.5px solid #EDE8DF', background: '#fff', cursor: 'pointer', fontSize: 15, fontWeight: 600, color: '#1A1612', fontFamily: 'inherit' }}>
               ✉️ Написати
             </button>
