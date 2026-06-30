@@ -65,7 +65,7 @@ export function TabBar() {
   const prevUnread = useRef(unread)
 
   useEffect(() => {
-    if (unread > prevUnread.current && location.pathname !== '/app/chat') {
+    if (unread > prevUnread.current && !location.pathname.startsWith('/app/chat/')) {
       playPop()
     }
     prevUnread.current = unread
