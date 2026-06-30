@@ -54,6 +54,46 @@ export const get = query({
   handler: async (ctx, { id }) => ctx.db.get(id),
 })
 
+// Returns match counts for each of the user's entries:
+// opposite intentType in same category+city
+export const listMatchCounts = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) return {}
+    const mine = await ctx.db
+      .query("entries")
+      .withIndex("by_client", (q) => q.eq("clientId", userId))
+      .take(50)
+    const allOpen = await ctx.db
+      .query("entries")
+      .withIndex("by_status", (q) => q.eq("status", "open"))
+      .take(200)
+    const others = allOpen.filter(e => e.clientId !== userId)
+
+    const oppositeIntent: Record<string, string> = {
+      seeking_service: "offering_service",
+      offering_service: "seeking_service",
+      seeking_job: "offering_service",
+      seeking_material: "seeking_material",
+    }
+
+    const counts: Record<string, number> = {}
+    for (const entry of mine) {
+      const opp = oppositeIntent[entry.intentType ?? ""] ?? null
+      counts[entry._id] = others.filter(o => {
+        const categoryMatch = !entry.category || !o.category || o.category === entry.category
+        const intentMatch = !opp || o.intentType === opp
+        const cityMatch = !entry.city || !o.city ||
+          o.city.toLowerCase().includes(entry.city.toLowerCase()) ||
+          entry.city.toLowerCase().includes(o.city.toLowerCase())
+        return categoryMatch && intentMatch && cityMatch
+      }).length
+    }
+    return counts
+  },
+})
+
 export const create = mutation({
   args: {
     title: v.string(),
