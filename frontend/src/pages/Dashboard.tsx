@@ -18,9 +18,12 @@ export function Dashboard() {
   const similar = useQuery(api.entries.listOpen, dashboardCategory ? { category: dashboardCategory } : 'skip')
   const [search, setSearch] = useState('')
 
-  const active = myEntries.filter(e => ['open', 'matched', 'booked', 'in_progress'].includes(e.status ?? '')).length
-  const done = myEntries.filter(e => e.status === 'done').length
-  const filtered = myEntries.filter(e => (e.title ?? '').toLowerCase().includes(search.toLowerCase()))
+  const projects = myEntries.filter(e => e.entryType === 'project')
+  const entries = myEntries.filter(e => e.entryType !== 'project')
+  const active = entries.filter(e => ['open', 'matched', 'booked', 'in_progress'].includes(e.status ?? '')).length
+  const done = entries.filter(e => e.status === 'done').length
+  const filteredEntries = entries.filter(e => (e.title ?? '').toLowerCase().includes(search.toLowerCase()))
+  const filteredProjects = projects.filter(e => (e.title ?? '').toLowerCase().includes(search.toLowerCase()))
   const myIds = myEntries.map(e => e._id)
 
   return (
@@ -144,40 +147,71 @@ export function Dashboard() {
               style={{ width: '100%', padding: '10px 14px 10px 34px', borderRadius: 12, border: '1.5px solid #EDE8DF', fontSize: 14, color: '#1A1612', outline: 'none', background: '#fff', fontFamily: 'inherit', boxSizing: 'border-box' }} />
           </div>
 
-          {/* Entries */}
+          {/* Entries + Projects */}
           {myEntries === undefined ? (
             <div style={{ textAlign: 'center', padding: 48, color: '#9A8060', fontSize: 14 }}>Завантаження…</div>
-          ) : filtered.length === 0 ? (
+          ) : myEntries.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '48px 24px' }}>
               <div style={{ fontSize: 40, marginBottom: 12 }}>📝</div>
               <div style={{ fontSize: 17, fontWeight: 700, color: '#1A1612', marginBottom: 8 }}>Ще немає записів</div>
               <div style={{ fontSize: 14, color: '#9A8060', marginBottom: 24 }}>Натисни + щоб додати перший запис</div>
-              <button onClick={() => navigate('/')}
-                onClick={() => navigate('/app/new', { state: { backgroundLocation: location } })}
-              style={{ padding: '14px 28px', borderRadius: 14, background: '#EF9F27', border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 700, color: '#1A1612', fontFamily: 'system-ui' }}>
+              <button onClick={() => navigate('/app/new', { state: { backgroundLocation: location } })}
+                style={{ padding: '14px 28px', borderRadius: 14, background: '#EF9F27', border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 700, color: '#1A1612', fontFamily: 'system-ui' }}>
                 Додати запис →
               </button>
             </div>
           ) : (
-            <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {filtered.map(e => (
-                <div key={e._id} onClick={() => navigate(`/app/entries/${e._id}`)}
-                  style={{ background: '#fff', borderRadius: 16, padding: '14px 16px', border: '1.5px solid #EDE8DF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#1A1612', marginBottom: 2 }}>{e.title}</div>
-                    <div style={{ fontSize: 12, color: '#9A8060' }}>
-                      {e.category} {e.city ? `· ${e.city}` : ''} {e.budgetMin && e.budgetMax ? `· €${e.budgetMin}–${e.budgetMax}` : ''}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: e.status === 'open' ? '#22C55E' : e.status === 'done' ? '#9A8060' : '#EF9F27' }} />
-                    <span style={{ fontSize: 12, color: '#9A8060', fontWeight: 600 }}>
-                      {e.status === 'open' ? 'Активно' : e.status === 'done' ? 'Виконано' : e.status ?? 'Відкрито'}
-                    </span>
-                    <svg width="6" height="11" viewBox="0 0 7 13" fill="none" stroke="#C7C7CC" strokeWidth="2" strokeLinecap="round"><path d="M1 1.5l5 5-5 5" /></svg>
+            <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {filteredEntries.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase' as const, letterSpacing: 1, marginBottom: 8 }}>Записи</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {filteredEntries.map(e => (
+                      <div key={e._id} onClick={() => navigate(`/app/entries/${e._id}`)}
+                        style={{ background: '#fff', borderRadius: 16, padding: '14px 16px', border: '1.5px solid #EDE8DF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: '#1A1612', marginBottom: 2 }}>{e.title}</div>
+                          <div style={{ fontSize: 12, color: '#9A8060' }}>
+                            {e.category}{e.city ? ` · ${e.city}` : ''}{e.budgetMin && e.budgetMax ? ` · €${e.budgetMin}–${e.budgetMax}` : ''}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: e.status === 'open' ? '#22C55E' : e.status === 'done' ? '#9A8060' : '#EF9F27' }} />
+                          <span style={{ fontSize: 12, color: '#9A8060', fontWeight: 600 }}>
+                            {e.status === 'open' ? 'Активно' : e.status === 'done' ? 'Виконано' : e.status ?? 'Відкрито'}
+                          </span>
+                          <svg width="6" height="11" viewBox="0 0 7 13" fill="none" stroke="#C7C7CC" strokeWidth="2" strokeLinecap="round"><path d="M1 1.5l5 5-5 5" /></svg>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))}
+              )}
+
+              {filteredProjects.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase' as const, letterSpacing: 1, marginBottom: 8 }}>Проєкти</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {filteredProjects.map(e => (
+                      <div key={e._id} onClick={() => navigate(`/app/entries/${e._id}`)}
+                        style={{ background: '#fff', borderRadius: 16, padding: '14px 16px', border: '1.5px solid #EDE8DF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <span style={{ fontSize: 20, flexShrink: 0 }}>📁</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: '#1A1612' }}>{e.title}</div>
+                          {e.city && <div style={{ fontSize: 12, color: '#9A8060', marginTop: 2 }}>{e.city}</div>}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: e.status === 'open' ? '#22C55E' : '#9A8060' }} />
+                          <span style={{ fontSize: 12, color: '#9A8060', fontWeight: 600 }}>
+                            {e.status === 'open' ? 'Активно' : 'Виконано'}
+                          </span>
+                          <svg width="6" height="11" viewBox="0 0 7 13" fill="none" stroke="#C7C7CC" strokeWidth="2" strokeLinecap="round"><path d="M1 1.5l5 5-5 5" /></svg>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
