@@ -44,7 +44,7 @@ export function TabBar() {
   const location = useLocation()
 
   const openNew = () => {
-    navigate('/app/create')
+    navigate('/app/new', { state: { backgroundLocation: location } })
   }
 
   return (
