@@ -12,13 +12,16 @@ export function Dashboard() {
   // legacy compat
   const legacyEntry = (location.state as { newEntry?: { id: string; task: string; aiResult: { emoji: string; category: string; min: number; max: number; time: string } | null; city: string } } | null)?.newEntry ?? null
   const primaryCategory = newRegistration?.goals[0]?.aiResult?.category ?? legacyEntry?.aiResult?.category
-  const similar = useQuery(api.entries.listOpen, primaryCategory ? { category: primaryCategory } : 'skip')
   const myEntries = useQuery(api.entries.listMine) ?? []
+  // for main dashboard: use first real entry's category for proposals
+  const dashboardCategory = primaryCategory ?? myEntries[0]?.category
+  const similar = useQuery(api.entries.listOpen, dashboardCategory ? { category: dashboardCategory } : 'skip')
   const [search, setSearch] = useState('')
 
   const active = myEntries.filter(e => ['open', 'matched', 'booked', 'in_progress'].includes(e.status ?? '')).length
   const done = myEntries.filter(e => e.status === 'done').length
   const filtered = myEntries.filter(e => (e.title ?? '').toLowerCase().includes(search.toLowerCase()))
+  const myIds = myEntries.map(e => e._id)
 
   return (
     <div onClick={() => swipedId && setSwipedId(null)}>
@@ -176,8 +179,39 @@ export function Dashboard() {
               ))}
             </div>
           )}
+
+          {/* Similar proposals for main dashboard */}
+          {(() => {
+            const proposals = (similar ?? []).filter(e => !myIds.includes(e._id)).slice(0, 4)
+            if (!dashboardCategory || proposals.length === 0) return null
+            return (
+              <div style={{ padding: '20px 16px 0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#EF9F27', animation: 'pulse 2s ease-in-out infinite' }} />
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1 }}>
+                    Збіги · {dashboardCategory}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {proposals.map(s => (
+                    <div key={s._id} onClick={() => navigate(`/app/entries/${s._id}`)}
+                      style={{ background: '#fff', borderRadius: 14, padding: '12px 14px', border: '1.5px solid #EDE8DF', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1612', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.title}</div>
+                        <div style={{ fontSize: 12, color: '#9A8060' }}>{s.city ?? ''}</div>
+                      </div>
+                      {s.budgetMin && s.budgetMax
+                        ? <div style={{ fontSize: 13, fontWeight: 700, color: '#EF9F27', whiteSpace: 'nowrap', marginLeft: 10 }}>€{s.budgetMin}–{s.budgetMax}</div>
+                        : <div style={{ fontSize: 12, color: '#B4A898', marginLeft: 10 }}>Договірна</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
         </div>
       )}
+      <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }`}</style>
     </div>
   )
 }

@@ -67,7 +67,9 @@ export function Landing() {
   const sendToAI = async (messages: ChatMsg[]) => {
     setChatLoading(true)
     try {
-      const raw = await callAI({ messages })
+      // filter out card-only messages (empty content) before sending to AI
+      const apiMessages = messages.filter(m => m.content.trim() !== '')
+      const raw = await callAI({ messages: apiMessages })
       const parsed = JSON.parse(raw as string)
       const assistantMsg: ChatMsg = { role: 'assistant', content: parsed.message }
       setMsgs(prev => [...prev, assistantMsg])
