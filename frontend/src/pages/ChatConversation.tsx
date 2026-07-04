@@ -20,10 +20,18 @@ export function ChatConversation() {
   const prefill = (location.state as { prefill?: string } | null)?.prefill ?? ''
   const [input, setInput] = useState(prefill)
   const [sending, setSending] = useState(false)
+  const [optimistic, setOptimistic] = useState<{ text: string; ts: number }[]>([])
+
+  const allMessages = [
+    ...messages,
+    ...optimistic
+      .filter(o => !messages.some(m => m.text === o.text && m._creationTime >= o.ts))
+      .map(o => ({ _id: `opt-${o.ts}` as Id<'messages'>, text: o.text, fromId: myId!, toId: partnerId, _creationTime: o.ts, read: false })),
+  ].sort((a, b) => a._creationTime - b._creationTime)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  }, [allMessages.length])
 
   useEffect(() => {
     if (partnerId) markRead({ partnerId })
@@ -32,12 +40,15 @@ export function ChatConversation() {
   const send = async () => {
     const text = input.trim()
     if (!text || sending) return
-    setSending(true)
+    const ts = Date.now()
     setInput('')
+    setOptimistic(prev => [...prev, { text, ts }])
+    setSending(true)
     try {
       await sendMsg({ toId: partnerId, text })
     } finally {
       setSending(false)
+      setOptimistic(prev => prev.filter(o => o.ts !== ts))
     }
   }
 
@@ -67,7 +78,7 @@ export function ChatConversation() {
 
       {/* Messages */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px 12px' }}>
-        {messages.map(m => {
+        {allMessages.map(m => {
           const isMe = m.fromId === myId
           return (
             <div key={m._id} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start', marginBottom: 8 }}>
