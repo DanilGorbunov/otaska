@@ -158,7 +158,7 @@ export function Profile() {
           </div>
         </div>
 
-        {/* Info card */}
+        {/* Info card — name + bio + stats in one block */}
         <div style={{ background: '#fff', borderRadius: 18, padding: '18px', marginBottom: 12, boxShadow: '0 2px 12px rgba(0,0,0,.06)', border: '1.5px solid #EDE8DF' }}>
           <div style={{ fontSize: 22, fontWeight: 800, color: '#1A1612', letterSpacing: '-.4px', marginBottom: 2 }}>{displayName}</div>
           {user?.email && <div style={{ fontSize: 13, color: '#9A8060', marginBottom: 8 }}>{user.email}</div>}
@@ -166,29 +166,30 @@ export function Profile() {
             ? <p style={{ fontSize: 14, color: '#5A4A2E', lineHeight: 1.65, margin: '0 0 10px' }}>{profile.bio}</p>
             : <p style={{ fontSize: 14, color: '#C0B49A', fontStyle: 'italic', margin: '0 0 10px' }}>Додайте опис профілю</p>
           }
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: profile?.isProvider ? 14 : 0 }}>
             {profile?.city && <span style={{ fontSize: 13, color: '#9A8060' }}>📍 {profile.city}</span>}
             {profile?.category && <span style={{ fontSize: 13, color: '#9A8060' }}>🔧 {profile.category}</span>}
             {profile?.availability && <span style={{ fontSize: 13, color: '#9A8060' }}>🕐 {profile.availability}</span>}
           </div>
-        </div>
 
-        {/* Stats */}
-        {profile?.isProvider && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 12 }}>
-            {[
-              { val: profile.rating > 0 ? profile.rating.toFixed(1) : '—', label: 'Рейтинг', icon: '⭐' },
-              { val: String(profile.jobsCompleted), label: 'Замовлень', icon: '✅' },
-              { val: profile.priceFrom && profile.priceTo ? `€${profile.priceFrom}–${profile.priceTo}` : profile.hourlyRate ? `€${profile.hourlyRate}/год` : '—', label: 'Ціна', icon: '💶' },
-            ].map((s, i) => (
-              <div key={i} style={{ background: '#fff', borderRadius: 16, padding: '14px 8px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,.05)', border: '1.5px solid #EDE8DF' }}>
-                <div style={{ fontSize: 18, marginBottom: 2 }}>{s.icon}</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#1A1612' }}>{s.val}</div>
-                <div style={{ fontSize: 11, color: '#9A8060', marginTop: 1 }}>{s.label}</div>
+          {profile?.isProvider && (
+            <>
+              <div style={{ height: 1, background: '#F0EBE3', marginBottom: 14 }} />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 0 }}>
+                {[
+                  { val: profile.rating > 0 ? profile.rating.toFixed(1) : '—', label: 'Рейтинг', icon: '⭐' },
+                  { val: String(profile.jobsCompleted), label: 'Замовлень', icon: '✅' },
+                  { val: profile.priceFrom && profile.priceTo ? `€${profile.priceFrom}–${profile.priceTo}` : profile.hourlyRate ? `€${profile.hourlyRate}/год` : '—', label: 'Ціна', icon: '💶' },
+                ].map((s, i) => (
+                  <div key={i} style={{ textAlign: 'center', padding: '4px 0', borderRight: i < 2 ? '1px solid #F0EBE3' : 'none' }}>
+                    <div style={{ fontSize: 11, color: '#9A8060', marginBottom: 3 }}>{s.label}</div>
+                    <div style={{ fontSize: 17, fontWeight: 800, color: '#1A1612' }}>{s.val}</div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+            </>
+          )}
+        </div>
 
         {/* Skills */}
         {(profile?.skills ?? []).length > 0 && (
