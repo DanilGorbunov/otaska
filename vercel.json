@@ -1,6 +1,7 @@
 {
   "version": 2,
-  "outputDirectory": "dist",
+  "buildCommand": "cd frontend && npm install && npm run vercel-build",
+  "outputDirectory": "frontend/dist",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]
