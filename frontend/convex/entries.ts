@@ -223,6 +223,8 @@ export const createTask = mutation({
     title: v.string(),
     category: v.optional(v.string()),
     intentType: intentTypeV,
+    budgetMin: v.optional(v.number()),
+    budgetMax: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx)
@@ -240,6 +242,8 @@ export const createTask = mutation({
       city: project.city,
       currency: "EUR",
       projectId: args.projectId,
+      budgetMin: args.budgetMin,
+      budgetMax: args.budgetMax,
     })
   },
 })

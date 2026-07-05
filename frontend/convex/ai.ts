@@ -125,6 +125,114 @@ export const chat = action({
   },
 })
 
+export const parseProjectFull = action({
+  args: { text: v.string() },
+  handler: async (_ctx, { text }) => {
+    const apiKey = process.env.OPENAI_API_KEY
+    if (!apiKey) throw new Error("OPENAI_API_KEY not set")
+
+    const system = `Ти — AI-помічник платформи OTaska. Користувач описує свій проєкт.
+Витягни з тексту:
+1. Назву проєкту (коротко, до 60 символів)
+2. Місто (якщо є, інакше "Bratislava")
+3. Список завдань — розбий на окремі позиції
+
+Для кожного завдання визнач тип:
+- "service" — потрібен виконавець (електрик, маляр, сантехнік тощо)
+- "material" — потрібен матеріал або постачальник (щебінь, цегла, труби тощо)
+
+Повертай ТІЛЬКИ JSON:
+{
+  "projectTitle": "Назва проєкту",
+  "projectCity": "Місто",
+  "tasks": [
+    { "title": "Малярні роботи", "type": "service", "intentType": "seeking_service" },
+    { "title": "Штукатурні роботи", "type": "service", "intentType": "seeking_service" },
+    { "title": "Щебінь (великий обсяг)", "type": "material", "intentType": "seeking_material" }
+  ]
+}
+
+Правила:
+- НЕ додавай ціни
+- Назви тасків — короткі і зрозумілі
+- Максимум 8 тасків
+- intentType: seeking_service для виконавців, seeking_material для матеріалів`
+
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [{ role: "system", content: system }, { role: "user", content: text }],
+        max_tokens: 600,
+        temperature: 0.3,
+        response_format: { type: "json_object" },
+      }),
+    })
+
+    const data = await response.json() as { choices: Array<{ message: { content: string } }> }
+    const content = data.choices?.[0]?.message?.content
+    if (!content) throw new Error("Empty response")
+    return JSON.parse(content) as {
+      projectTitle: string
+      projectCity: string
+      tasks: Array<{ title: string; type: 'service' | 'material'; intentType: string }>
+    }
+  },
+})
+
+export const parseProjectTasks = action({
+  args: {
+    text: v.string(),
+    projectTitle: v.string(),
+    projectCity: v.optional(v.string()),
+  },
+  handler: async (_ctx, { text, projectTitle, projectCity }) => {
+    const apiKey = process.env.OPENAI_API_KEY
+    if (!apiKey) throw new Error("OPENAI_API_KEY not set")
+
+    const system = `Ти — AI-помічник платформи OTaska. Користувач описує завдання для свого проєкту "${projectTitle}"${projectCity ? ` у місті ${projectCity}` : ''}.
+Розбий текст на окремі завдання. Кожне завдання — окремий виконавець або тип роботи.
+
+Повертай ТІЛЬКИ JSON:
+{
+  "tasks": [
+    {
+      "title": "Назва завдання (коротко, до 60 символів)",
+      "category": "Електрика | Сантехніка | Малярство | Будівництво | Прибирання | Інше",
+      "budgetMin": 0,
+      "budgetMax": 0,
+      "intentType": "seeking_service"
+    }
+  ]
+}
+
+Правила:
+- Якщо бюджет не згаданий — postав 0
+- Якщо одна людина — один таск
+- Максимум 8 тасків
+- Мова тасків — як у вхідному тексті (українська/англійська)`
+
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [{ role: "system", content: system }, { role: "user", content: text }],
+        max_tokens: 600,
+        temperature: 0.3,
+        response_format: { type: "json_object" },
+      }),
+    })
+
+    const data = await response.json() as { choices: Array<{ message: { content: string } }> }
+    const content = data.choices?.[0]?.message?.content
+    if (!content) throw new Error("Empty response")
+    const parsed = JSON.parse(content) as { tasks: Array<{ title: string; category: string; budgetMin: number; budgetMax: number; intentType: string }> }
+    return parsed.tasks ?? []
+  },
+})
+
 // AI matching: given one entry, find relevant open entries from other users
 export const findMatches = action({
   args: { entryId: v.id("entries") },

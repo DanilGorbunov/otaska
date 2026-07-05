@@ -1,11 +1,40 @@
 import { Outlet, useLocation, useNavigationType } from 'react-router-dom'
 import { TabBar } from './TabBar'
+import { useEffect } from 'react'
+import { usePushNotifications } from '../../hooks/usePushNotifications'
+import { useQuery } from 'convex/react'
+import { api } from '../../../convex/_generated/api'
 
 const TAB_ROOTS = ['/app', '/app/browse', '/app/chat', '/app/profile']
 
 export function AppShell() {
   const location = useLocation()
   const navType = useNavigationType()
+  const { subscribe, permission, supported } = usePushNotifications()
+
+  const unreadCount = useQuery(api.messages.unreadCount) ?? 0
+
+  // Auto-subscribe on first app open if not yet decided
+  useEffect(() => {
+    if (supported && permission === 'default') {
+      subscribe()
+    }
+  }, [supported]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // App badge — червона крапка на іконці PWA
+  useEffect(() => {
+    const nav = navigator as Navigator & {
+      setAppBadge?: (count: number) => Promise<void>
+      clearAppBadge?: () => Promise<void>
+    }
+    if (!nav.setAppBadge) return
+    if (unreadCount > 0) {
+      nav.setAppBadge(unreadCount).catch(() => {})
+    } else {
+      nav.clearAppBadge?.().catch(() => {})
+    }
+  }, [unreadCount])
+
 
   const isTabSwitch = TAB_ROOTS.includes(location.pathname)
   const animation = isTabSwitch

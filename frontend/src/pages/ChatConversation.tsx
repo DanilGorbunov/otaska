@@ -22,6 +22,34 @@ export function ChatConversation() {
   const [sending, setSending] = useState(false)
   const [optimistic, setOptimistic] = useState<{ text: string; ts: number }[]>([])
 
+  const myId = me?._id
+
+  // Play sound on incoming messages
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const prevCountRef = useRef<number>(-1)
+  useEffect(() => {
+    audioRef.current = new Audio('/new-notification.mp3')
+    audioRef.current.volume = 0.7
+    audioRef.current.load()
+  }, [])
+  useEffect(() => {
+    if (!myId) return
+    const incomingCount = messages.filter(m => m.fromId !== myId).length
+    if (prevCountRef.current === -1) {
+      // first load — just store count, don't play
+      prevCountRef.current = incomingCount
+      return
+    }
+    if (incomingCount > prevCountRef.current) {
+      const audio = audioRef.current
+      if (audio) {
+        audio.currentTime = 0
+        audio.play().catch(() => {})
+      }
+    }
+    prevCountRef.current = incomingCount
+  }, [messages.length, myId])
+
   const allMessages = [
     ...messages,
     ...optimistic
@@ -53,7 +81,6 @@ export function ChatConversation() {
   }
 
   const partnerName = partner?.name ?? partner?.email?.split('@')[0] ?? 'Користувач'
-  const myId = me?._id
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#F5F4F1', maxWidth: 480, margin: '0 auto', width: '100%' }}>

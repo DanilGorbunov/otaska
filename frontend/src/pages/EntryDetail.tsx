@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useAction } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
+import { ProjectTaskAdder } from '../components/ProjectTaskAdder'
 
 // ── Mini AI publish chat ──────────────────────────────────────────────────────
 type AIMsg = { role: 'user' | 'assistant'; content: string }
@@ -70,6 +71,16 @@ export function EntryDetail() {
   const createTask = useMutation(api.entries.createTask)
   const publishTask = useMutation(api.entries.publishTask)
   const sendProposal = useMutation(api.proposals.create)
+  const acceptProposal = useMutation(api.proposals.accept)
+  const markDone = useMutation(api.proposals.markDone)
+  const mockPay = useMutation(api.proposals.mockPay)
+  const createReview = useMutation(api.reviews.create)
+  const [reviewModal, setReviewModal] = useState<{ proposalId: string; providerName: string } | null>(null)
+  const [reviewRating, setReviewRating] = useState(5)
+  const [reviewComment, setReviewComment] = useState('')
+  const [reviewSending, setReviewSending] = useState(false)
+  const proposals = useQuery(api.proposals.listForEntry, id ? { entryId: id as Id<'entries'> } : 'skip') ?? []
+  const myProposal = useQuery(api.proposals.myProposalForEntry, id ? { entryId: id as Id<'entries'> } : 'skip')
   const callAI = useAction(api.ai.chat)
   const findMatches = useAction(api.ai.findMatches)
   const dismissMatch = useMutation(api.entries.dismissAiMatch)
@@ -78,15 +89,27 @@ export function EntryDetail() {
 
   // Proposal sheet
   const [proposalOpen, setProposalOpen] = useState(false)
+  useEffect(() => {
+    if (proposalOpen) document.body.classList.add('sheet-open')
+    else document.body.classList.remove('sheet-open')
+    return () => document.body.classList.remove('sheet-open')
+  }, [proposalOpen])
   const [propMsg, setPropMsg] = useState('')
   const [propPrice, setPropPrice] = useState('')
   const [propSending, setPropSending] = useState(false)
+  const sendSoundRef = useRef<HTMLAudioElement | null>(null)
+  useEffect(() => {
+    sendSoundRef.current = new Audio('/new-notification.mp3')
+    sendSoundRef.current.volume = 0.7
+    sendSoundRef.current.load()
+  }, [])
 
   const handleSendProposal = async () => {
     if (!propMsg.trim() || !id) return
     setPropSending(true)
     try {
       await sendProposal({ entryId: id as Id<'entries'>, message: propMsg, price: propPrice ? Number(propPrice) : undefined })
+      if (sendSoundRef.current) { sendSoundRef.current.currentTime = 0; sendSoundRef.current.play().catch(() => {}) }
       setProposalOpen(false)
       setPropMsg(''); setPropPrice('')
       if (entry) navigate(`/app/chat/${entry.clientId}`)
@@ -143,9 +166,6 @@ export function EntryDetail() {
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   // Task add state
-  const [newTaskText, setNewTaskText] = useState('')
-  const [addingTask, setAddingTask] = useState(false)
-
   // Publish chat state
   const [publishChat, setPublishChat] = useState<PublishState | null>(null)
 
@@ -189,16 +209,6 @@ export function EntryDetail() {
   const handleDelete = async () => {
     await removeEntry({ id: entry._id })
     navigate('/app', { replace: true })
-  }
-
-  const handleAddTask = async () => {
-    const text = newTaskText.trim()
-    if (!text) return
-    setAddingTask(true)
-    try {
-      await createTask({ projectId: entry._id, title: text, intentType: 'seeking_service' })
-      setNewTaskText('')
-    } finally { setAddingTask(false) }
   }
 
   // Start publish chat for a task
@@ -369,22 +379,14 @@ export function EntryDetail() {
         {/* ── PROJECT: Task list ── */}
         {isProject && (
           <>
-            {/* Quick add */}
-            <form onSubmit={e => { e.preventDefault(); handleAddTask() }}
-              style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-              <input
-                value={newTaskText}
-                onChange={e => setNewTaskText(e.target.value)}
-                placeholder="Додати таск: «Потрібен електрик»"
-                style={{ flex: 1, padding: '12px 14px', borderRadius: 12, border: '1.5px solid #EDE8DF', fontSize: 14, outline: 'none', fontFamily: 'inherit', background: '#fff', color: '#1A1612' }}
-                onFocus={e => { e.currentTarget.style.borderColor = '#EF9F27' }}
-                onBlur={e => { e.currentTarget.style.borderColor = '#EDE8DF' }}
+            {/* AI + Manual task adder */}
+            <div style={{ marginBottom: 16 }}>
+              <ProjectTaskAdder
+                projectTitle={entry.title}
+                projectCity={entry.city}
+                projectId={entry._id}
               />
-              <button type="submit" disabled={!newTaskText.trim() || addingTask}
-                style={{ padding: '12px 16px', borderRadius: 12, background: newTaskText.trim() ? '#EF9F27' : '#EDE8DF', border: 'none', cursor: newTaskText.trim() ? 'pointer' : 'default', fontSize: 18, color: '#1A1612', transition: 'background .15s' }}>
-                +
-              </button>
-            </form>
+            </div>
 
             {/* Open tasks */}
             {openTasks.length > 0 && (
@@ -452,6 +454,82 @@ export function EntryDetail() {
           </div>
         )}
 
+
+        {/* ── PROPOSALS LIST (owner sees incoming proposals) ── */}
+        {isOwn && proposals.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
+              Пропозиції ({proposals.length})
+            </div>
+            {proposals.map(p => {
+              const statusLabel: Record<string, string> = {
+                pending: '⏳ Очікує', accepted: '✅ Прийнято', in_progress: '🔧 В роботі',
+                done: '🏁 Завершено', paid: '💰 Оплачено', rejected: '✗ Відхилено',
+              }
+              const statusColor: Record<string, string> = {
+                pending: '#9A8060', accepted: '#22C55E', in_progress: '#EF9F27',
+                done: '#3B82F6', paid: '#8B5CF6', rejected: '#EF4444',
+              }
+              return (
+                <div key={p._id} style={{ background: '#fff', borderRadius: 14, padding: '14px', border: '1.5px solid #EDE8DF', marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#1A1612' }}>{p.providerName}</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: statusColor[p.status] }}>{statusLabel[p.status]}</div>
+                  </div>
+                  {p.price && <div style={{ fontSize: 16, fontWeight: 800, color: '#EF9F27', marginBottom: 4 }}>€{p.price}</div>}
+                  <div style={{ fontSize: 13, color: '#5A4A2E', marginBottom: 10 }}>{p.message}</div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => navigate(`/app/chat/${p.providerId}`)}
+                      style={{ flex: 1, padding: '10px', borderRadius: 12, border: '1.5px solid #EDE8DF', background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#1A1612', fontFamily: 'inherit' }}>
+                      ✉️ Написати
+                    </button>
+                    {p.status === 'pending' && (
+                      <button onClick={() => acceptProposal({ proposalId: p._id })}
+                        style={{ flex: 1, padding: '10px', borderRadius: 12, border: 'none', background: '#1A1612', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: 'inherit' }}>
+                        ✅ Прийняти
+                      </button>
+                    )}
+                    {p.status === 'done' && (
+                      <button onClick={async () => { await mockPay({ proposalId: p._id }); setReviewModal({ proposalId: p._id, providerName: p.providerName }) }}
+                        style={{ flex: 1, padding: '10px', borderRadius: 12, border: 'none', background: '#8B5CF6', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: 'inherit' }}>
+                        💰 Оплатити €{p.price ?? '—'}
+                      </button>
+                    )}
+                    {p.status === 'paid' && (
+                      <button onClick={() => setReviewModal({ proposalId: p._id, providerName: p.providerName })}
+                        style={{ flex: 1, padding: '10px', borderRadius: 12, border: 'none', background: '#FF9500', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: 'inherit' }}>
+                        ⭐ Залишити відгук
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* ── MY PROPOSAL STATUS (provider sees own proposal) ── */}
+        {!isOwn && myProposal && (
+          <div style={{ background: '#fff', borderRadius: 14, padding: '14px', border: '1.5px solid #EDE8DF', marginBottom: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#9A8060', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8 }}>Ваша пропозиція</div>
+            {{
+              pending: <div style={{ fontSize: 14, color: '#9A8060' }}>⏳ Очікує відповіді клієнта</div>,
+              accepted: <div style={{ fontSize: 14, color: '#22C55E', fontWeight: 700 }}>✅ Прийнято! Можна починати роботу.</div>,
+              in_progress: (
+                <div>
+                  <div style={{ fontSize: 14, color: '#EF9F27', fontWeight: 700, marginBottom: 10 }}>🔧 Робота в процесі</div>
+                  <button onClick={() => markDone({ proposalId: myProposal._id })}
+                    style={{ width: '100%', padding: '12px', borderRadius: 12, border: 'none', background: '#3B82F6', cursor: 'pointer', fontSize: 14, fontWeight: 700, color: '#fff', fontFamily: 'inherit' }}>
+                    🏁 Позначити як завершено
+                  </button>
+                </div>
+              ),
+              done: <div style={{ fontSize: 14, color: '#3B82F6', fontWeight: 700 }}>🏁 Завершено — очікуємо оплату від клієнта</div>,
+              paid: <div style={{ fontSize: 14, color: '#8B5CF6', fontWeight: 700 }}>💰 Оплачено! Дякуємо за роботу.</div>,
+              rejected: <div style={{ fontSize: 14, color: '#EF4444' }}>✗ Пропозицію відхилено</div>,
+            }[myProposal.status]}
+          </div>
+        )}
 
         {/* Delete confirm */}
         {confirmDelete && (
@@ -525,30 +603,66 @@ export function EntryDetail() {
       )}
 
       {/* Proposal sheet */}
-      {proposalOpen && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(6px)' }} onClick={() => setProposalOpen(false)} />
-          <div style={{ position: 'relative', width: '100%', maxWidth: 480, zIndex: 201, background: '#F5F4F1', borderRadius: '24px 24px 0 0', padding: '20px 16px calc(40px + env(safe-area-inset-bottom, 0px))', boxShadow: '0 -8px 48px rgba(0,0,0,.22)' }}>
-            <div style={{ width: 36, height: 4, borderRadius: 99, background: '#D1C8B8', margin: '-8px auto 16px' }} />
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#1A1612', marginBottom: 16 }}>Надіслати пропозицію</div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#9A8060', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8 }}>Ваша ціна (€)</div>
-              <input type="number" value={propPrice} onChange={e => setPropPrice(e.target.value)}
-                placeholder="Наприклад: 150"
-                style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1.5px solid #EDE8DF', fontSize: 16, outline: 'none', fontFamily: 'inherit', background: '#fff', boxSizing: 'border-box' }}
-                onFocus={e => { e.currentTarget.style.borderColor = '#EF9F27' }}
-                onBlur={e => { e.currentTarget.style.borderColor = '#EDE8DF' }} />
+      {/* Review modal */}
+      {reviewModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: window.innerWidth > 500 ? 'center' : 'flex-end', justifyContent: 'center' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(6px)' }} onClick={() => setReviewModal(null)} />
+          <div style={{ position: 'relative', width: '100%', maxWidth: 480, zIndex: 301, background: '#F5F4F1', borderRadius: window.innerWidth > 500 ? 24 : '24px 24px 0 0', boxShadow: '0 8px 48px rgba(0,0,0,.28)', padding: '24px 16px', margin: window.innerWidth > 500 ? '0 16px' : 0 }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#1A1612', marginBottom: 6 }}>Залишити відгук</div>
+            <div style={{ fontSize: 14, color: '#9A8060', marginBottom: 20 }}>{reviewModal.providerName}</div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
+              {[1,2,3,4,5].map(star => (
+                <span key={star} onClick={() => setReviewRating(star)} style={{ fontSize: 36, cursor: 'pointer', opacity: star <= reviewRating ? 1 : 0.25, transition: 'opacity .15s' }}>⭐</span>
+              ))}
             </div>
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#9A8060', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8 }}>Повідомлення</div>
-              <textarea value={propMsg} onChange={e => setPropMsg(e.target.value)}
-                placeholder="Розкажіть про себе і чому ви підходите для цієї роботи..."
-                rows={4}
-                style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1.5px solid #EDE8DF', fontSize: 15, outline: 'none', fontFamily: 'inherit', background: '#fff', resize: 'none', lineHeight: 1.5, boxSizing: 'border-box' }}
-                onFocus={e => { e.currentTarget.style.borderColor = '#EF9F27' }}
-                onBlur={e => { e.currentTarget.style.borderColor = '#EDE8DF' }} />
-            </div>
+            <textarea value={reviewComment} onChange={e => setReviewComment(e.target.value)}
+              placeholder="Розкажіть про якість роботи (необов'язково)..."
+              rows={3}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1.5px solid #EDE8DF', fontSize: 15, outline: 'none', fontFamily: 'inherit', background: '#fff', resize: 'none', lineHeight: 1.5, boxSizing: 'border-box', marginBottom: 16 }} />
             <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setReviewModal(null)} style={{ flex: 1, padding: 14, borderRadius: 14, border: 'none', cursor: 'pointer', background: 'rgba(118,118,128,.12)', fontSize: 15, fontWeight: 500, color: '#3C3C43', fontFamily: 'inherit' }}>Пропустити</button>
+              <button disabled={reviewSending} onClick={async () => {
+                setReviewSending(true)
+                try {
+                  await createReview({ proposalId: reviewModal.proposalId as Id<'proposals'>, rating: reviewRating, comment: reviewComment || undefined })
+                  setReviewModal(null); setReviewComment(''); setReviewRating(5)
+                } finally { setReviewSending(false) }
+              }} style={{ flex: 2, padding: 14, borderRadius: 14, border: 'none', cursor: 'pointer', background: '#1A1612', fontSize: 15, fontWeight: 700, color: '#fff', fontFamily: 'inherit' }}>
+                {reviewSending ? 'Надсилаємо...' : '⭐ Відправити'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {proposalOpen && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: window.innerWidth > 500 ? 'center' : 'flex-end', justifyContent: 'center' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(6px)' }} onClick={() => setProposalOpen(false)} />
+          <div style={{ position: 'relative', width: '100%', maxWidth: 480, zIndex: 201, background: '#F5F4F1', borderRadius: window.innerWidth > 500 ? 24 : '24px 24px 0 0', boxShadow: '0 8px 48px rgba(0,0,0,.28)', maxHeight: '90dvh', overflow: 'hidden', display: 'flex', flexDirection: 'column', margin: window.innerWidth > 500 ? '0 16px' : 0 }}>
+            {/* Scrollable content */}
+            <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
+              <div style={{ width: 36, height: 4, borderRadius: 99, background: '#D1C8B8', margin: window.innerWidth > 500 ? '0' : '12px auto 8px', display: window.innerWidth > 500 ? 'none' : 'block' }} />
+              <div style={{ padding: '16px 16px 0', fontSize: 18, fontWeight: 800, color: '#1A1612', marginBottom: 12 }}>Надіслати пропозицію</div>
+              <div style={{ padding: '0 16px', marginBottom: 12 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#9A8060', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8 }}>Ваша ціна (€)</div>
+                <input type="number" value={propPrice} onChange={e => setPropPrice(e.target.value)}
+                  placeholder="Наприклад: 150"
+                  style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1.5px solid #EDE8DF', fontSize: 16, outline: 'none', fontFamily: 'inherit', background: '#fff', boxSizing: 'border-box' }}
+                  onFocus={e => { e.currentTarget.style.borderColor = '#EF9F27' }}
+                  onBlur={e => { e.currentTarget.style.borderColor = '#EDE8DF' }} />
+              </div>
+              <div style={{ padding: '0 16px 16px' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#9A8060', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8 }}>Повідомлення</div>
+                <textarea value={propMsg} onChange={e => setPropMsg(e.target.value)}
+                  placeholder="Розкажіть про себе і чому ви підходите для цієї роботи..."
+                  rows={3}
+                  style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1.5px solid #EDE8DF', fontSize: 15, outline: 'none', fontFamily: 'inherit', background: '#fff', resize: 'none', lineHeight: 1.5, boxSizing: 'border-box' }}
+                  onFocus={e => { e.currentTarget.style.borderColor = '#EF9F27' }}
+                  onBlur={e => { e.currentTarget.style.borderColor = '#EDE8DF' }} />
+              </div>
+            </div>
+            {/* Buttons — always visible, never scrolls away */}
+            <div style={{ flexShrink: 0, padding: '12px 16px', paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))', background: '#F5F4F1', borderTop: '1px solid #EDE8DF', display: 'flex', gap: 10 }}>
               <button onClick={() => setProposalOpen(false)} style={{ flex: 1, padding: 14, borderRadius: 14, border: 'none', cursor: 'pointer', background: 'rgba(118,118,128,.12)', fontSize: 15, fontWeight: 500, color: '#3C3C43', fontFamily: 'inherit' }}>Скасувати</button>
               <button onClick={handleSendProposal} disabled={!propMsg.trim() || propSending}
                 style={{ flex: 2, padding: 14, borderRadius: 14, border: 'none', cursor: propMsg.trim() ? 'pointer' : 'not-allowed', background: propMsg.trim() ? '#1A1612' : '#C7C7CC', fontSize: 15, fontWeight: 700, color: '#fff', fontFamily: 'inherit' }}>

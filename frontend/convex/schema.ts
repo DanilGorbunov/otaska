@@ -15,7 +15,20 @@ export default defineSchema({
     hourlyRate: v.optional(v.number()),
     rating: v.number(),
     jobsCompleted: v.number(),
-  }).index("by_user", ["userId"]),
+    avatar: v.optional(v.string()),
+    availability: v.optional(v.string()),
+  }).index("by_user", ["userId"])
+    .index("by_provider", ["isProvider"]),
+
+  reviews: defineTable({
+    proposalId: v.id("proposals"),
+    reviewerId: v.id("users"),
+    providerId: v.id("users"),
+    entryId: v.id("entries"),
+    rating: v.number(),
+    comment: v.optional(v.string()),
+  }).index("by_provider", ["providerId"])
+    .index("by_proposal", ["proposalId"]),
 
   entries: defineTable({
     clientId: v.id("users"),
@@ -68,12 +81,22 @@ export default defineSchema({
     status: v.union(
       v.literal("pending"),
       v.literal("accepted"),
+      v.literal("in_progress"),
+      v.literal("done"),
+      v.literal("paid"),
       v.literal("rejected"),
     ),
     estimatedDays: v.optional(v.number()),
   })
     .index("by_entry", ["entryId"])
     .index("by_provider", ["providerId"]),
+
+  pushSubscriptions: defineTable({
+    userId: v.id("users"),
+    endpoint: v.string(),
+    p256dh: v.string(),
+    auth: v.string(),
+  }).index("by_user", ["userId"]),
 
   messages: defineTable({
     fromId: v.id("users"),

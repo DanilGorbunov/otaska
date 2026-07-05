@@ -1,0 +1,12 @@
+{
+  "name": "OTaska",
+  "short_name": "OTaska",
+  "description": "Знайди майстра або роботу",
+  "start_url": "/app",
+  "display": "standalone",
+  "background_color": "#0D0B09",
+  "theme_color": "#EF9F27",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

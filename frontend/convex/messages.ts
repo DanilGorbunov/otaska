@@ -1,6 +1,7 @@
 import { query, mutation } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { v } from "convex/values"
+import { internal } from "./_generated/api"
 
 // All conversations for current user (unique partners)
 export const listConversations = query({
@@ -56,7 +57,24 @@ export const send = mutation({
   handler: async (ctx, { toId, text, entryId }) => {
     const userId = await getAuthUserId(ctx)
     if (!userId) throw new Error("Not authenticated")
-    return ctx.db.insert("messages", { fromId: userId, toId, text, read: false, entryId })
+
+    await ctx.db.insert("messages", { fromId: userId, toId, text, read: false, entryId })
+
+    // Push notification to recipient
+    const recipientSubs = await ctx.db
+      .query("pushSubscriptions")
+      .withIndex("by_user", (q) => q.eq("userId", toId))
+      .collect()
+    if (recipientSubs.length > 0) {
+      const sender = await ctx.db.get(userId)
+      const senderName = sender?.name ?? "Повідомлення"
+      await ctx.scheduler.runAfter(0, internal.pushNotifications.send, {
+        subscriptions: recipientSubs.map(s => ({ endpoint: s.endpoint, p256dh: s.p256dh, auth: s.auth })),
+        title: senderName,
+        body: text.slice(0, 100),
+        url: `/app/chat/${userId}`,
+      })
+    }
   },
 })
 

@@ -76,7 +76,7 @@ export function TabBar() {
   }
 
   return (
-    <div style={{
+    <div className="tabbar" style={{
       position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
       width: '100%', maxWidth: 430, zIndex: 50,
       background: 'rgba(249,249,249,.94)',
