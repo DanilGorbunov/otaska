@@ -1,258 +1,372 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { NavBar } from '../components/layout/NavBar'
-import { useAuthActions } from '@convex-dev/auth/react'
-import { useQuery, useMutation } from 'convex/react'
+import { useMutation, useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
+import type { Id } from '../../convex/_generated/dataModel'
+import { useAuthActions } from '@convex-dev/auth/react'
 
-const SKILL_OPTIONS = ['Електрик', 'Сантехнік', 'Маляр', 'Тесля', 'Зварник', 'Плиточник', 'Вантажник', 'Прибирання', 'Ремонт техніки', 'IT']
+const CATEGORIES = ['Електрика', 'Сантехніка', 'Ремонт', 'Малярство', 'Плитка', 'Теслярство', 'Прибирання', 'Переїзд', 'Ландшафт', 'Інше']
+const SKILL_OPTIONS = ['Електрика', 'Сантехніка', 'Малярство', 'Штукатурка', 'Плитка', 'Теслярство', 'Зварювання', 'Гіпсокартон', 'Підлога', 'Покрівля', 'Прибирання', 'Переїзд', 'Ландшафт', 'Будівництво']
+
+function UploadButton({ label, onUpload, small }: { label: string; onUpload: (file: File) => Promise<void>; small?: boolean }) {
+  const ref = useRef<HTMLInputElement>(null)
+  const [loading, setLoading] = useState(false)
+  const handle = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setLoading(true)
+    try { await onUpload(file) } finally { setLoading(false) }
+    e.target.value = ''
+  }
+  return (
+    <>
+      <input ref={ref} type="file" accept="image/*" style={{ display: 'none' }} onChange={handle} />
+      <button onClick={() => ref.current?.click()} disabled={loading}
+        style={{ padding: small ? '5px 10px' : '7px 16px', borderRadius: 99, border: 'none', cursor: 'pointer', background: 'rgba(0,0,0,.45)', backdropFilter: 'blur(8px)', color: '#fff', fontSize: small ? 11 : 12, fontWeight: 600, fontFamily: 'inherit' }}>
+        {loading ? '⏳' : label}
+      </button>
+    </>
+  )
+}
 
 export function Profile() {
   const navigate = useNavigate()
   const { signOut } = useAuthActions()
-  const me = useQuery(api.users.getMe)
+  const data = useQuery(api.storage.getMyProfileFull)
   const updateProfile = useMutation(api.users.updateProfile)
+  const generateUploadUrl = useMutation(api.storage.generateUploadUrl)
+  const saveAvatar = useMutation(api.storage.saveAvatar)
+  const saveCover = useMutation(api.storage.saveCover)
+  const addPortfolioItem = useMutation(api.storage.addPortfolioItem)
+  const removePortfolioItem = useMutation(api.storage.removePortfolioItem)
+  const updateCaption = useMutation(api.storage.updatePortfolioCaption)
 
   const [editing, setEditing] = useState(false)
-  const [form, setForm] = useState({ name: '', city: '', phone: '', bio: '', hourlyRate: '', availability: '' })
+  const [saving, setSaving] = useState(false)
+  const [name, setName] = useState('')
+  const [city, setCity] = useState('')
+  const [bio, setBio] = useState('')
+  const [category, setCategory] = useState('')
   const [isProvider, setIsProvider] = useState(false)
   const [skills, setSkills] = useState<string[]>([])
-  const [saving, setSaving] = useState(false)
+  const [hourlyRate, setHourlyRate] = useState('')
+  const [priceFrom, setPriceFrom] = useState('')
+  const [priceTo, setPriceTo] = useState('')
+  const [availability, setAvailability] = useState('')
+  const [editingCaption, setEditingCaption] = useState<string | null>(null)
+  const [captionText, setCaptionText] = useState('')
+  const portfolioRef = useRef<HTMLInputElement>(null)
 
-  if (me === undefined) {
-    return <div style={{ textAlign: 'center', padding: 48, color: '#8E8E93' }}>Завантаження...</div>
+  if (data === undefined) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <div style={{ width: 28, height: 28, borderRadius: '50%', border: '3px solid #EF9F27', borderTopColor: 'transparent', animation: 'spin .8s linear infinite' }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+      </div>
+    )
   }
 
-  const displayName = me?.name ?? me?.email?.split('@')[0] ?? 'Користувач'
-  const email = me?.email ?? ''
-  const emailVerified = (me as { emailVerificationTime?: number } | null)?.emailVerificationTime != null
-  const city = me?.profile?.city ?? ''
-  const phone = me?.profile?.phone ?? ''
-  const rating = me?.profile?.rating ?? 0
-  const jobs = me?.profile?.jobsCompleted ?? 0
-  const providerMode = me?.profile?.isProvider ?? false
+  const user = data?.user
+  const profile = data?.profile
+  const avatarUrl = data?.avatarUrl
+  const coverUrl = data?.coverUrl
+  const portfolioUrls = data?.portfolioUrls ?? []
+  const displayName = user?.name ?? user?.email?.split('@')[0] ?? 'Користувач'
+  const initials = displayName.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
 
-  const startEdit = () => {
-    setForm({
-      name: displayName,
-      city,
-      phone,
-      bio: me?.profile?.bio ?? '',
-      hourlyRate: me?.profile?.hourlyRate?.toString() ?? '',
-      availability: me?.profile?.availability ?? '',
-    })
-    setIsProvider(providerMode)
-    setSkills(me?.profile?.skills ?? [])
+  const openEdit = () => {
+    setName(user?.name ?? '')
+    setCity(profile?.city ?? '')
+    setBio(profile?.bio ?? '')
+    setCategory(profile?.category ?? '')
+    setIsProvider(profile?.isProvider ?? false)
+    setSkills(profile?.skills ?? [])
+    setHourlyRate(profile?.hourlyRate ? String(profile.hourlyRate) : '')
+    setPriceFrom(profile?.priceFrom ? String(profile.priceFrom) : '')
+    setPriceTo(profile?.priceTo ? String(profile.priceTo) : '')
+    setAvailability(profile?.availability ?? '')
     setEditing(true)
+  }
+
+  const save = async () => {
+    setSaving(true)
+    try {
+      await updateProfile({
+        name: name || undefined,
+        city: city || undefined,
+        bio: bio || undefined,
+        category: category || undefined,
+        isProvider,
+        skills: skills.length > 0 ? skills : undefined,
+        hourlyRate: hourlyRate ? Number(hourlyRate) : undefined,
+        priceFrom: priceFrom ? Number(priceFrom) : undefined,
+        priceTo: priceTo ? Number(priceTo) : undefined,
+        availability: availability || undefined,
+      })
+      setEditing(false)
+    } finally { setSaving(false) }
+  }
+
+  const uploadFile = async (file: File): Promise<Id<'_storage'>> => {
+    const url = await generateUploadUrl()
+    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': file.type }, body: file })
+    const { storageId } = await res.json() as { storageId: Id<'_storage'> }
+    return storageId
   }
 
   const toggleSkill = (s: string) => setSkills(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])
 
-  const handleSave = async () => {
-    setSaving(true)
-    try {
-      await updateProfile({
-        name: form.name || undefined,
-        city: form.city || undefined,
-        phone: form.phone || undefined,
-        bio: form.bio || undefined,
-        isProvider,
-        skills: skills.length > 0 ? skills : undefined,
-        hourlyRate: form.hourlyRate ? Number(form.hourlyRate) : undefined,
-        availability: form.availability || undefined,
-      })
-      setEditing(false)
-    } finally {
-      setSaving(false)
-    }
-  }
-
   return (
-    <div style={{ paddingBottom: 100 }}>
-      <NavBar
-        title="Профіль"
-        showBack={false}
-        right={
-          <button onClick={editing ? () => setEditing(false) : startEdit}
-            style={{ color: '#007AFF', background: 'none', border: 'none', cursor: 'pointer', fontSize: 17, fontFamily: 'inherit' }}>
-            {editing ? 'Скасувати' : 'Редагувати'}
-          </button>
+    <div style={{ background: '#F2F2F7', minHeight: '100dvh', paddingBottom: 40 }}>
+
+      {/* Cover */}
+      <div style={{ position: 'relative', height: 180, overflow: 'hidden', background: coverUrl ? undefined : 'linear-gradient(135deg, #1A1612 0%, #3D2E1E 60%, #EF9F27 100%)' }}>
+        {coverUrl
+          ? <img src={coverUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          : <>
+              <div style={{ position: 'absolute', top: -40, right: -40, width: 200, height: 200, borderRadius: '50%', background: 'rgba(255,255,255,.04)' }} />
+              <div style={{ position: 'absolute', bottom: -60, left: 40, width: 160, height: 160, borderRadius: '50%', background: 'rgba(239,159,39,.12)' }} />
+            </>
         }
-      />
+        <div style={{ position: 'absolute', bottom: 12, right: 12 }}>
+          <UploadButton label="📷 Обкладинка" onUpload={async f => { const id = await uploadFile(f); await saveCover({ storageId: id }) }} />
+        </div>
+      </div>
 
-      <div style={{ padding: '16px 16px 0' }}>
-
-        {/* Email verification banner */}
-        {!emailVerified && (
-          <div style={{ background: 'rgba(255,149,0,.12)', border: '1.5px solid rgba(255,149,0,.3)', borderRadius: 14, padding: '12px 16px', marginBottom: 12, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-            <span style={{ fontSize: 20 }}>✉️</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#B45309', marginBottom: 2 }}>Підтвердіть email</div>
-              <div style={{ fontSize: 13, color: '#92400E', lineHeight: 1.4 }}>
-                Перевірте пошту <strong>{email}</strong> та натисніть посилання.
-              </div>
+      <div style={{ padding: '0 20px' }}>
+        {/* Avatar row */}
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: -44, marginBottom: 14 }}>
+          <div style={{ position: 'relative' }}>
+            <div style={{ width: 88, height: 88, borderRadius: '50%', border: '3px solid #F2F2F7', overflow: 'hidden', background: 'linear-gradient(135deg,#1A1612 0%,#5A3E22 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, fontWeight: 800, color: '#EF9F27', boxShadow: '0 4px 20px rgba(0,0,0,.2)' }}>
+              {avatarUrl ? <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initials}
+            </div>
+            <div style={{ position: 'absolute', bottom: 0, right: -4 }}>
+              <UploadButton label="📷" onUpload={async f => { const id = await uploadFile(f); await saveAvatar({ storageId: id }) }} small />
             </div>
           </div>
-        )}
-
-        {/* Avatar card */}
-        <div style={{ background: '#fff', borderRadius: 20, padding: '20px 20px 16px', boxShadow: '0 1px 8px rgba(0,0,0,.07)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg,#111 0%,#333 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
-            {displayName[0]?.toUpperCase() ?? '?'}
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-.3px' }}>{displayName}</div>
-              {providerMode && <span style={{ fontSize: 11, fontWeight: 700, color: '#EF9F27', background: 'rgba(239,159,39,.12)', padding: '3px 8px', borderRadius: 20 }}>Майстер</span>}
-            </div>
-            <div style={{ fontSize: 14, color: '#8E8E93', marginTop: 2 }}>
-              {city ? `📍 ${city}` : email}
-            </div>
-            {rating > 0 && (
-              <div style={{ display: 'flex', gap: 2, marginTop: 6, alignItems: 'center' }}>
-                {'⭐'.repeat(Math.round(rating))}
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#FF9500', marginLeft: 4 }}>{rating.toFixed(1)}</span>
-              </div>
+          <div style={{ display: 'flex', gap: 8, paddingBottom: 8 }}>
+            {profile?.isProvider && (
+              <button onClick={() => navigate(`/app/users/${user?._id}`)}
+                style={{ padding: '8px 14px', borderRadius: 12, border: '1.5px solid #EDE8DF', background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#5A4A2E', fontFamily: 'inherit' }}>
+                👁 Мій профіль
+              </button>
             )}
+            <button onClick={openEdit}
+              style={{ padding: '8px 18px', borderRadius: 12, border: 'none', background: '#1A1612', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: 'inherit' }}>
+              ✏️ Редагувати
+            </button>
           </div>
-          {emailVerified && (
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#007AFF', background: 'rgba(0,122,255,.1)', padding: '4px 10px', borderRadius: 20, alignSelf: 'flex-start' }}>
-              ✓ Верифіковано
-            </span>
-          )}
+        </div>
+
+        {/* Info card */}
+        <div style={{ background: '#fff', borderRadius: 18, padding: '18px', marginBottom: 12, boxShadow: '0 2px 12px rgba(0,0,0,.06)', border: '1.5px solid #EDE8DF' }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#1A1612', letterSpacing: '-.4px', marginBottom: 2 }}>{displayName}</div>
+          {user?.email && <div style={{ fontSize: 13, color: '#9A8060', marginBottom: 8 }}>{user.email}</div>}
+          {profile?.bio
+            ? <p style={{ fontSize: 14, color: '#5A4A2E', lineHeight: 1.65, margin: '0 0 10px' }}>{profile.bio}</p>
+            : <p style={{ fontSize: 14, color: '#C0B49A', fontStyle: 'italic', margin: '0 0 10px' }}>Додайте опис профілю</p>
+          }
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            {profile?.city && <span style={{ fontSize: 13, color: '#9A8060' }}>📍 {profile.city}</span>}
+            {profile?.category && <span style={{ fontSize: 13, color: '#9A8060' }}>🔧 {profile.category}</span>}
+            {profile?.availability && <span style={{ fontSize: 13, color: '#9A8060' }}>🕐 {profile.availability}</span>}
+          </div>
         </div>
 
         {/* Stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8, marginBottom: 12 }}>
-          {[
-            { val: rating > 0 ? rating.toFixed(1) : '—', label: 'Рейтинг', color: '#FF9500' },
-            { val: jobs > 0 ? jobs : '—', label: 'Виконано', color: '#34C759' },
-          ].map((s, i) => (
-            <div key={i} style={{ background: '#fff', borderRadius: 14, padding: '14px 8px', textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
-              <div style={{ fontSize: 20, fontWeight: 800, color: s.color }}>{s.val}</div>
-              <div style={{ fontSize: 11, color: '#8E8E93', fontWeight: 500, marginTop: 2 }}>{s.label}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Edit form */}
-        {editing && (
-          <>
-            {/* Provider toggle */}
-            <div style={{ background: '#fff', borderRadius: 16, padding: '14px 16px', marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 600 }}>Я майстер / виконавець</div>
-                <div style={{ fontSize: 12, color: '#9A8060', marginTop: 2 }}>З'явлюсь у списку майстрів</div>
+        {profile?.isProvider && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 12 }}>
+            {[
+              { val: profile.rating > 0 ? profile.rating.toFixed(1) : '—', label: 'Рейтинг', icon: '⭐' },
+              { val: String(profile.jobsCompleted), label: 'Замовлень', icon: '✅' },
+              { val: profile.priceFrom && profile.priceTo ? `€${profile.priceFrom}–${profile.priceTo}` : profile.hourlyRate ? `€${profile.hourlyRate}/год` : '—', label: 'Ціна', icon: '💶' },
+            ].map((s, i) => (
+              <div key={i} style={{ background: '#fff', borderRadius: 16, padding: '14px 8px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,.05)', border: '1.5px solid #EDE8DF' }}>
+                <div style={{ fontSize: 18, marginBottom: 2 }}>{s.icon}</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#1A1612' }}>{s.val}</div>
+                <div style={{ fontSize: 11, color: '#9A8060', marginTop: 1 }}>{s.label}</div>
               </div>
-              <div onClick={() => setIsProvider(p => !p)} style={{
-                width: 51, height: 31, borderRadius: 99, background: isProvider ? '#34C759' : '#E5E5EA',
-                cursor: 'pointer', position: 'relative', transition: 'background .2s', flexShrink: 0,
-              }}>
-                <div style={{
-                  position: 'absolute', top: 2, left: isProvider ? 22 : 2,
-                  width: 27, height: 27, borderRadius: '50%', background: '#fff',
-                  boxShadow: '0 1px 4px rgba(0,0,0,.3)', transition: 'left .2s',
-                }} />
-              </div>
-            </div>
-
-            <div style={{ background: '#fff', borderRadius: 20, overflow: 'hidden', boxShadow: '0 1px 6px rgba(0,0,0,.07)', marginBottom: 12 }}>
-              {[
-                { key: 'name', label: "ІМ'Я", placeholder: 'Ваше ім\'я', type: 'text' },
-                { key: 'city', label: 'МІСТО', placeholder: 'Братислава', type: 'text' },
-                { key: 'phone', label: 'ТЕЛЕФОН', placeholder: '+421 ...', type: 'tel' },
-                { key: 'bio', label: 'ПРО СЕБЕ', placeholder: 'Коротко про досвід...', type: 'text' },
-              ].map(({ key, label, placeholder, type }, i, arr) => (
-                <div key={key} style={{ padding: '12px 16px', borderBottom: i < arr.length - 1 ? '0.5px solid #F2F2F7' : 'none' }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#8E8E93', marginBottom: 6 }}>{label}</div>
-                  <input type={type} value={form[key as keyof typeof form]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                    placeholder={placeholder}
-                    style={{ width: '100%', border: 'none', outline: 'none', fontSize: 16, fontFamily: 'inherit', background: 'transparent', boxSizing: 'border-box' }} />
-                </div>
-              ))}
-            </div>
-
-            {isProvider && (
-              <>
-                <div style={{ background: '#fff', borderRadius: 20, overflow: 'hidden', boxShadow: '0 1px 6px rgba(0,0,0,.07)', marginBottom: 12 }}>
-                  <div style={{ padding: '12px 16px', borderBottom: '0.5px solid #F2F2F7' }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: '#8E8E93', marginBottom: 6 }}>СТАВКА €/ГОД</div>
-                    <input type="number" value={form.hourlyRate} onChange={e => setForm(f => ({ ...f, hourlyRate: e.target.value }))}
-                      placeholder="Наприклад: 25"
-                      style={{ width: '100%', border: 'none', outline: 'none', fontSize: 16, fontFamily: 'inherit', background: 'transparent', boxSizing: 'border-box' }} />
-                  </div>
-                  <div style={{ padding: '12px 16px' }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: '#8E8E93', marginBottom: 6 }}>ДОСТУПНІСТЬ</div>
-                    <input value={form.availability} onChange={e => setForm(f => ({ ...f, availability: e.target.value }))}
-                      placeholder="Наприклад: Пн–Пт, 9:00–18:00"
-                      style={{ width: '100%', border: 'none', outline: 'none', fontSize: 16, fontFamily: 'inherit', background: 'transparent', boxSizing: 'border-box' }} />
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Навички</div>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {SKILL_OPTIONS.map(s => (
-                      <span key={s} onClick={() => toggleSkill(s)} style={{
-                        padding: '8px 14px', borderRadius: 99, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                        background: skills.includes(s) ? '#1A1612' : 'rgba(0,0,0,.06)',
-                        color: skills.includes(s) ? '#fff' : '#111',
-                        transition: 'all .15s',
-                      }}>{s}</span>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-
-            <button onClick={handleSave} disabled={saving} style={{ width: '100%', padding: 16, borderRadius: 16, border: 'none', cursor: 'pointer', background: '#111', color: '#fff', fontSize: 17, fontWeight: 700, fontFamily: 'inherit', marginBottom: 12 }}>
-              {saving ? 'Зберігаємо...' : 'Зберегти зміни'}
-            </button>
-          </>
+            ))}
+          </div>
         )}
 
-        {/* Skills display */}
-        {!editing && (me?.profile?.skills ?? []).length > 0 && (
+        {/* Skills */}
+        {(profile?.skills ?? []).length > 0 && (
           <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Навички</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Навички</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {(me?.profile?.skills ?? []).map(s => (
-                <span key={s} style={{ padding: '7px 14px', borderRadius: 99, background: 'rgba(0,0,0,.06)', color: '#111', fontSize: 13, fontWeight: 600 }}>{s}</span>
+              {(profile?.skills ?? []).map(s => (
+                <span key={s} style={{ padding: '7px 14px', borderRadius: 99, background: '#fff', color: '#1A1612', fontSize: 13, fontWeight: 600, boxShadow: '0 1px 4px rgba(0,0,0,.08)', border: '1.5px solid #EDE8DF' }}>{s}</span>
               ))}
             </div>
           </div>
         )}
 
-        {/* Account info */}
-        <div style={{ fontSize: 12, fontWeight: 600, color: '#8E8E93', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 8, marginTop: 4 }}>Акаунт</div>
-        <div style={{ background: '#fff', borderRadius: 20, overflow: 'hidden', boxShadow: '0 1px 6px rgba(0,0,0,.07)', marginBottom: 16 }}>
-          {[
-            { icon: '📧', label: 'Email', value: email, extra: emailVerified ? <span style={{ fontSize: 12, color: '#34C759', fontWeight: 600 }}>✓</span> : <span style={{ fontSize: 12, color: '#FF9500', fontWeight: 600 }}>не підтверджено</span> },
-            { icon: '📍', label: 'Місто', value: city || '—' },
-            { icon: '📱', label: 'Телефон', value: phone || '—' },
-          ].map(({ icon, label, value, extra }, i, arr) => (
-            <div key={label} style={{ padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: i < arr.length - 1 ? '0.5px solid #F2F2F7' : 'none' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontSize: 18 }}>{icon}</span>
-                <span style={{ fontSize: 15 }}>{label}</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 14, color: '#8E8E93' }}>{value}</span>
-                {extra}
-              </div>
+        {/* Portfolio */}
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1 }}>Портфоліо</div>
+            <button onClick={() => portfolioRef.current?.click()}
+              style={{ padding: '5px 14px', borderRadius: 99, border: 'none', background: '#1A1612', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+              + Додати
+            </button>
+            <input ref={portfolioRef} type="file" accept="image/*" style={{ display: 'none' }}
+              onChange={async e => { const f = e.target.files?.[0]; if (!f) return; const id = await uploadFile(f); await addPortfolioItem({ storageId: id }); e.target.value = '' }} />
+          </div>
+
+          {portfolioUrls.length === 0 ? (
+            <button onClick={() => portfolioRef.current?.click()}
+              style={{ width: '100%', padding: '32px 16px', borderRadius: 16, border: '2px dashed #EDE8DF', background: '#fff', cursor: 'pointer', color: '#9A8060', fontSize: 14, fontFamily: 'inherit' }}>
+              📷 Додайте фото своїх робіт
+            </button>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 4, borderRadius: 16, overflow: 'hidden' }}>
+              {portfolioUrls.map(item => (
+                <div key={item.storageId} style={{ position: 'relative', aspectRatio: '1' }}>
+                  <img src={item.url ?? ''} alt={item.caption ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  {editingCaption === item.storageId ? (
+                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.75)', display: 'flex', flexDirection: 'column', padding: 8, gap: 6 }}>
+                      <input autoFocus value={captionText} onChange={e => setCaptionText(e.target.value)}
+                        style={{ flex: 1, border: 'none', borderRadius: 6, padding: '4px 8px', fontSize: 12, fontFamily: 'inherit', outline: 'none' }} placeholder="Підпис..." />
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button onClick={async () => { await updateCaption({ storageId: item.storageId, caption: captionText }); setEditingCaption(null) }}
+                          style={{ flex: 1, padding: 4, borderRadius: 6, border: 'none', background: '#EF9F27', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>✓</button>
+                        <button onClick={() => setEditingCaption(null)}
+                          style={{ flex: 1, padding: 4, borderRadius: 6, border: 'none', background: 'rgba(255,255,255,.2)', color: '#fff', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>✕</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ position: 'absolute', inset: 0, opacity: 0, transition: 'opacity .15s', background: 'rgba(0,0,0,.55)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                      onMouseEnter={e => { e.currentTarget.style.opacity = '1' }}
+                      onMouseLeave={e => { e.currentTarget.style.opacity = '0' }}
+                    >
+                      <button onClick={() => { setEditingCaption(item.storageId); setCaptionText(item.caption ?? '') }}
+                        style={{ padding: '5px 12px', borderRadius: 8, border: 'none', background: 'rgba(255,255,255,.2)', color: '#fff', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>✏️ Підпис</button>
+                      <button onClick={() => removePortfolioItem({ storageId: item.storageId })}
+                        style={{ padding: '5px 12px', borderRadius: 8, border: 'none', background: 'rgba(220,38,38,.7)', color: '#fff', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>🗑 Видалити</button>
+                    </div>
+                  )}
+                  {item.caption && editingCaption !== item.storageId && (
+                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent,rgba(0,0,0,.7))', padding: '12px 6px 5px', fontSize: 10, color: '#fff', lineHeight: 1.3 }}>
+                      {item.caption}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
 
-        <button onClick={() => navigate(`/app/profile/${me?._id}`)}
-          style={{ width: '100%', padding: 14, borderRadius: 16, border: '1.5px solid #EDE8DF', cursor: 'pointer', background: '#fff', color: '#1A1612', fontSize: 15, fontWeight: 600, fontFamily: 'inherit', marginBottom: 10 }}>
-          👁 Переглянути мій профіль
-        </button>
-
-        <button onClick={() => signOut().then(() => navigate('/'))} style={{ width: '100%', padding: 16, borderRadius: 16, border: 'none', cursor: 'pointer', background: 'rgba(255,59,48,.08)', color: '#FF3B30', fontSize: 17, fontWeight: 600, fontFamily: 'inherit' }}>
-          Вийти
+        {/* Sign out */}
+        <button onClick={() => signOut()}
+          style={{ width: '100%', padding: 14, borderRadius: 14, border: '1.5px solid #EDE8DF', background: '#fff', cursor: 'pointer', fontSize: 15, fontWeight: 600, color: '#DC2626', fontFamily: 'inherit', marginTop: 8 }}>
+          Вийти з акаунту
         </button>
       </div>
+
+      {/* Edit sheet */}
+      {editing && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 80, display: 'flex', alignItems: 'flex-end' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(6px)' }} onClick={() => setEditing(false)} />
+          <div style={{ position: 'relative', width: '100%', maxWidth: 500, margin: '0 auto', background: '#F9F9F9', borderRadius: '24px 24px 0 0', maxHeight: '92dvh', overflowY: 'auto', zIndex: 90, boxShadow: '0 -8px 48px rgba(0,0,0,.22)' }}>
+            <div style={{ width: 36, height: 4, borderRadius: 99, background: '#D1D1D6', margin: '12px auto 0' }} />
+            <div style={{ padding: '16px 20px 48px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#1A1612' }}>Редагувати профіль</h2>
+                <button onClick={() => setEditing(false)} style={{ width: 28, height: 28, borderRadius: '50%', border: 'none', background: 'rgba(118,118,128,.15)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="12" height="12" fill="none" viewBox="0 0 12 12" stroke="#3C3C43" strokeWidth="2" strokeLinecap="round"><path d="M1 1l10 10M11 1L1 11" /></svg>
+                </button>
+              </div>
+
+              {[{ label: "Ім'я", val: name, set: setName, ph: "Ваше ім'я" }, { label: 'Місто', val: city, set: setCity, ph: 'Братислава' }].map(f => (
+                <div key={f.label} style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>{f.label}</div>
+                  <input value={f.val} onChange={e => f.set(e.target.value)} placeholder={f.ph}
+                    style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1.5px solid #EDE8DF', fontSize: 15, fontFamily: 'inherit', background: '#fff', outline: 'none', boxSizing: 'border-box', color: '#1A1612' }}
+                    onFocus={e => { e.currentTarget.style.borderColor = '#1A1612' }}
+                    onBlur={e => { e.currentTarget.style.borderColor = '#EDE8DF' }}
+                  />
+                </div>
+              ))}
+
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Опис</div>
+                <textarea value={bio} onChange={e => setBio(e.target.value)} placeholder="Розкажіть про себе та свій досвід..." rows={3}
+                  style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1.5px solid #EDE8DF', fontSize: 15, fontFamily: 'inherit', background: '#fff', outline: 'none', boxSizing: 'border-box', resize: 'none', color: '#1A1612', lineHeight: 1.5 }}
+                  onFocus={e => { e.currentTarget.style.borderColor = '#1A1612' }}
+                  onBlur={e => { e.currentTarget.style.borderColor = '#EDE8DF' }}
+                />
+              </div>
+
+              {/* Provider toggle */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', borderRadius: 14, padding: '14px 16px', marginBottom: 14, border: '1.5px solid #EDE8DF' }}>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#1A1612' }}>Я виконавець</div>
+                  <div style={{ fontSize: 12, color: '#9A8060' }}>Показувати мій профіль замовникам</div>
+                </div>
+                <div onClick={() => setIsProvider(p => !p)} style={{ width: 50, height: 28, borderRadius: 99, background: isProvider ? '#EF9F27' : '#E5E5EA', cursor: 'pointer', position: 'relative', transition: 'background .2s', flexShrink: 0 }}>
+                  <div style={{ position: 'absolute', top: 3, left: isProvider ? 24 : 3, width: 22, height: 22, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,.2)', transition: 'left .2s' }} />
+                </div>
+              </div>
+
+              {isProvider && (
+                <>
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Категорія</div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {CATEGORIES.map(c => (
+                        <button key={c} onClick={() => setCategory(c)}
+                          style={{ padding: '7px 14px', borderRadius: 99, border: `1.5px solid ${category === c ? '#1A1612' : '#EDE8DF'}`, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, background: category === c ? '#1A1612' : '#fff', color: category === c ? '#fff' : '#5A4A2E' }}>
+                          {c}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Навички</div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {SKILL_OPTIONS.map(s => (
+                        <button key={s} onClick={() => toggleSkill(s)}
+                          style={{ padding: '7px 14px', borderRadius: 99, border: `1.5px solid ${skills.includes(s) ? '#EF9F27' : '#EDE8DF'}`, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, background: skills.includes(s) ? '#EF9F27' : '#fff', color: skills.includes(s) ? '#fff' : '#5A4A2E' }}>
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Ціна (€)</div>
+                    <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                      {[{ label: 'Від', val: priceFrom, set: setPriceFrom }, { label: 'До', val: priceTo, set: setPriceTo }].map(f => (
+                        <div key={f.label} style={{ flex: 1 }}>
+                          <div style={{ fontSize: 11, color: '#9A8060', marginBottom: 4 }}>{f.label}</div>
+                          <input type="number" value={f.val} onChange={e => f.set(e.target.value)} placeholder="0"
+                            style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1.5px solid #EDE8DF', fontSize: 15, fontFamily: 'inherit', background: '#fff', outline: 'none', boxSizing: 'border-box', color: '#1A1612' }} />
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#9A8060', marginBottom: 4 }}>Або ставка за годину</div>
+                    <input type="number" value={hourlyRate} onChange={e => setHourlyRate(e.target.value)} placeholder="€/год"
+                      style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1.5px solid #EDE8DF', fontSize: 15, fontFamily: 'inherit', background: '#fff', outline: 'none', boxSizing: 'border-box', color: '#1A1612' }} />
+                  </div>
+
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Доступність</div>
+                    <input value={availability} onChange={e => setAvailability(e.target.value)} placeholder="Наприклад: Пн–Пт, 9:00–18:00"
+                      style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1.5px solid #EDE8DF', fontSize: 15, fontFamily: 'inherit', background: '#fff', outline: 'none', boxSizing: 'border-box', color: '#1A1612' }} />
+                  </div>
+                </>
+              )}
+
+              <button onClick={save} disabled={saving}
+                style={{ width: '100%', padding: 16, borderRadius: 14, border: 'none', background: '#1A1612', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                {saving ? 'Зберігаємо...' : '✓ Зберегти'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

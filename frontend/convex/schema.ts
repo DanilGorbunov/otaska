@@ -12,11 +12,20 @@ export default defineSchema({
     phone: v.optional(v.string()),
     isProvider: v.boolean(),
     skills: v.optional(v.array(v.string())),
+    category: v.optional(v.string()),
     hourlyRate: v.optional(v.number()),
+    priceFrom: v.optional(v.number()),
+    priceTo: v.optional(v.number()),
     rating: v.number(),
     jobsCompleted: v.number(),
     avatar: v.optional(v.string()),
+    avatarStorageId: v.optional(v.id("_storage")),
+    coverStorageId: v.optional(v.id("_storage")),
     availability: v.optional(v.string()),
+    portfolioItems: v.optional(v.array(v.object({
+      storageId: v.id("_storage"),
+      caption: v.optional(v.string()),
+    }))),
   }).index("by_user", ["userId"])
     .index("by_provider", ["isProvider"]),
 

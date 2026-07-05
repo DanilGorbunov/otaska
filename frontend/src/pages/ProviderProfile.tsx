@@ -3,6 +3,9 @@ import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
 
+// Placeholder tiles shown when no portfolio photos yet
+const PLACEHOLDERS = ['#E8DDD0', '#D9EAD3', '#CFE2F3', '#EDE8DF', '#FAE3C6', '#E6CECE']
+
 function StarRow({ rating, size = 14 }: { rating: number; size?: number }) {
   return (
     <span style={{ display: 'inline-flex', gap: 2 }}>
@@ -18,23 +21,19 @@ function StarRow({ rating, size = 14 }: { rating: number; size?: number }) {
   )
 }
 
-// Placeholder portfolio items (will be replaced with real photos when upload is added)
-const PORTFOLIO_PLACEHOLDERS = [
-  { color: '#E8DDD0', label: '🔨' },
-  { color: '#D9EAD3', label: '⚡' },
-  { color: '#CFE2F3', label: '🔧' },
-  { color: '#EDE8DF', label: '🏗️' },
-  { color: '#FAE3C6', label: '🪵' },
-  { color: '#E6CECE', label: '🎨' },
-]
 
 export function ProviderProfile() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const user = useQuery(api.users.getUser, id ? { userId: id as Id<'users'> } : 'skip')
+  const data = useQuery(api.storage.getProviderProfileFull, id ? { userId: id as Id<'users'> } : 'skip')
   const reviews = useQuery(api.reviews.listForProvider, id ? { providerId: id as Id<'users'> } : 'skip') ?? []
 
-  if (user === undefined) {
+  const user = data?.user
+  const avatarUrl = data?.avatarUrl
+  const coverUrl = data?.coverUrl
+  const portfolioUrls = data?.portfolioUrls ?? []
+
+  if (data === undefined) {
     return (
       <div style={{ minHeight: '100dvh', background: '#F2F2F7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid #EF9F27', borderTopColor: 'transparent', animation: 'spin .8s linear infinite' }} />
@@ -43,7 +42,7 @@ export function ProviderProfile() {
     )
   }
 
-  if (!user) {
+  if (!data || !user) {
     return (
       <div style={{ textAlign: 'center', padding: 64, color: '#9A8060' }}>
         <div style={{ fontSize: 48, marginBottom: 12 }}>👤</div>
@@ -53,7 +52,7 @@ export function ProviderProfile() {
   }
 
   const name = user.name ?? user.email?.split('@')[0] ?? 'Користувач'
-  const profile = user.profile
+  const profile = data.profile
   const rating = profile?.rating ?? 0
   const jobs = profile?.jobsCompleted ?? 0
   const skills = profile?.skills ?? []
@@ -63,10 +62,14 @@ export function ProviderProfile() {
     <div style={{ background: '#F2F2F7', minHeight: '100dvh', paddingBottom: 100 }}>
 
       {/* ── Cover + back ── */}
-      <div style={{ position: 'relative', height: 200, background: 'linear-gradient(135deg, #1A1612 0%, #3D2E1E 60%, #EF9F27 100%)', overflow: 'hidden' }}>
-        {/* decorative circles */}
-        <div style={{ position: 'absolute', top: -40, right: -40, width: 200, height: 200, borderRadius: '50%', background: 'rgba(255,255,255,.04)' }} />
-        <div style={{ position: 'absolute', bottom: -60, left: 40, width: 160, height: 160, borderRadius: '50%', background: 'rgba(239,159,39,.12)' }} />
+      <div style={{ position: 'relative', height: 200, background: coverUrl ? undefined : 'linear-gradient(135deg, #1A1612 0%, #3D2E1E 60%, #EF9F27 100%)', overflow: 'hidden' }}>
+        {coverUrl
+          ? <img src={coverUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          : <>
+              <div style={{ position: 'absolute', top: -40, right: -40, width: 200, height: 200, borderRadius: '50%', background: 'rgba(255,255,255,.04)' }} />
+              <div style={{ position: 'absolute', bottom: -60, left: 40, width: 160, height: 160, borderRadius: '50%', background: 'rgba(239,159,39,.12)' }} />
+            </>
+        }
 
         {/* Back button */}
         <button onClick={() => navigate(-1)} style={{
@@ -97,15 +100,8 @@ export function ProviderProfile() {
       {/* ── Avatar overlapping cover ── */}
       <div style={{ position: 'relative', padding: '0 20px', marginTop: -48 }}>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, marginBottom: 14 }}>
-          <div style={{
-            width: 90, height: 90, borderRadius: '50%', flexShrink: 0,
-            background: 'linear-gradient(135deg,#1A1612 0%,#5A3E22 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 32, fontWeight: 800, color: '#EF9F27',
-            border: '3px solid #F2F2F7',
-            boxShadow: '0 4px 20px rgba(0,0,0,.2)',
-          }}>
-            {initials}
+          <div style={{ width: 90, height: 90, borderRadius: '50%', flexShrink: 0, border: '3px solid #F2F2F7', boxShadow: '0 4px 20px rgba(0,0,0,.2)', overflow: 'hidden', background: 'linear-gradient(135deg,#1A1612 0%,#5A3E22 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, fontWeight: 800, color: '#EF9F27' }}>
+            {avatarUrl ? <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initials}
           </div>
           <div style={{ paddingBottom: 8, flex: 1 }}>
             {rating > 0 && (
@@ -169,21 +165,27 @@ export function ProviderProfile() {
 
         {/* ── Portfolio grid ── */}
         <div style={{ marginBottom: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1 }}>Портфоліо</div>
-            <span style={{ fontSize: 12, color: '#C0B49A' }}>Фото незабаром</span>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 4, borderRadius: 16, overflow: 'hidden' }}>
-            {PORTFOLIO_PLACEHOLDERS.map((p, i) => (
-              <div key={i} style={{
-                aspectRatio: '1', background: p.color,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 28,
-              }}>
-                {p.label}
-              </div>
-            ))}
-          </div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Портфоліо</div>
+          {portfolioUrls.length === 0 ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 4, borderRadius: 16, overflow: 'hidden' }}>
+              {PLACEHOLDERS.map((color, i) => (
+                <div key={i} style={{ aspectRatio: '1', background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: 'rgba(0,0,0,.2)' }}>📷</div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 4, borderRadius: 16, overflow: 'hidden' }}>
+              {portfolioUrls.map(item => (
+                <div key={item.storageId} style={{ position: 'relative', aspectRatio: '1' }}>
+                  <img src={item.url ?? ''} alt={item.caption ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  {item.caption && (
+                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent,rgba(0,0,0,.7))', padding: '12px 6px 5px', fontSize: 10, color: '#fff', lineHeight: 1.3 }}>
+                      {item.caption}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ── Reviews ── */}

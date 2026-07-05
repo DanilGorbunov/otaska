@@ -17,6 +17,7 @@ import type * as proposals from "../proposals.js";
 import type * as pushNotifications from "../pushNotifications.js";
 import type * as pushSubscriptions from "../pushSubscriptions.js";
 import type * as reviews from "../reviews.js";
+import type * as storage from "../storage.js";
 import type * as users from "../users.js";
 
 import type {
@@ -35,6 +36,7 @@ declare const fullApi: ApiFromModules<{
   pushNotifications: typeof pushNotifications;
   pushSubscriptions: typeof pushSubscriptions;
   reviews: typeof reviews;
+  storage: typeof storage;
   users: typeof users;
 }>;
 
