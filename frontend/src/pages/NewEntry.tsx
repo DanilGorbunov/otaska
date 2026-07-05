@@ -47,6 +47,8 @@ export function NewEntry() {
   const [text, setText] = useState('')
 
   // Project mode — step 1
+  const [projectTitle, setProjectTitle] = useState('')
+  const [projectCity, setProjectCity] = useState('')
   const [projectText, setProjectText] = useState('')
   const [parsing, setParsing] = useState(false)
 
@@ -64,12 +66,15 @@ export function NewEntry() {
     try {
       const result = await parseProjectFull({ text }) as { projectTitle: string; projectCity: string; tasks: Array<{ title: string; type: 'service' | 'material'; intentType: string }> }
       setParsed({
-        projectTitle: result.projectTitle,
-        projectCity: result.projectCity,
+        projectTitle: projectTitle.trim() || result.projectTitle,
+        projectCity: projectCity.trim() || result.projectCity,
         tasks: result.tasks.map(t => ({ ...t, selected: true })),
       })
     } catch (e) {
-      setError((e as Error)?.message ?? 'Помилка AI')
+      const msg = (e as Error)?.message ?? ''
+      setError(msg.includes('OPENAI_API_KEY') || msg.includes('Server Error')
+        ? 'AI недоступний. Перевірте OPENAI_API_KEY у Convex Dashboard → Settings → Environment Variables.'
+        : msg || 'Помилка AI')
     } finally {
       setParsing(false)
     }
@@ -207,13 +212,31 @@ export function NewEntry() {
           {/* ── PROJECT MODE STEP 1 — textarea ── */}
           {mode === 'project' && !parsed && (
             <>
-              <div style={{ background: '#fff', borderRadius: 18, padding: '14px 16px', marginBottom: 12, border: projectText.length > 0 ? '1.5px solid #111' : '1.5px solid transparent', transition: 'border-color .2s', boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
-                <textarea
+              <div style={{ background: '#fff', borderRadius: 18, padding: '14px 16px', marginBottom: 10, boxShadow: '0 2px 12px rgba(0,0,0,.06)', border: '1.5px solid #EDE8DF' }}>
+                <input
                   autoFocus
+                  value={projectTitle}
+                  onChange={e => setProjectTitle(e.target.value)}
+                  placeholder="Назва проєкту"
+                  style={{ width: '100%', border: 'none', outline: 'none', fontSize: 17, fontWeight: 700, fontFamily: 'inherit', background: 'transparent', marginBottom: 10, boxSizing: 'border-box', color: '#1A1612' }}
+                />
+                <div style={{ height: 1, background: '#F0EBE3', marginBottom: 10 }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 14, color: '#9A8060', flexShrink: 0 }}>📍</span>
+                  <input
+                    value={projectCity}
+                    onChange={e => setProjectCity(e.target.value)}
+                    placeholder="Місто"
+                    style={{ flex: 1, border: 'none', outline: 'none', fontSize: 14, fontFamily: 'inherit', background: 'transparent', color: '#1A1612' }}
+                  />
+                </div>
+              </div>
+              <div style={{ background: '#fff', borderRadius: 18, padding: '14px 16px', marginBottom: 12, border: projectText.length > 0 ? '1.5px solid #111' : '1.5px solid #EDE8DF', transition: 'border-color .2s', boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
+                <textarea
                   value={projectText}
                   onChange={e => setProjectText(e.target.value)}
-                  placeholder={'Опишіть проєкт — що потрібно зробити, де, які роботи чи матеріали...\n\nНаприклад: «Зимній стадіон 200кв у Братиславі. Малярні та штукатурні роботи, багато щебня та сантехніка»'}
-                  style={{ width: '100%', minHeight: 140, border: 'none', outline: 'none', resize: 'none', fontSize: 16, lineHeight: 1.55, color: '#000', background: 'transparent', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                  placeholder={'Опишіть роботи та матеріали...\n\nНаприклад: «Малярні та штукатурні роботи, великий обсяг щебня та піску, сантехніка у роздягальнях»'}
+                  style={{ width: '100%', minHeight: 110, border: 'none', outline: 'none', resize: 'none', fontSize: 15, lineHeight: 1.55, color: '#000', background: 'transparent', fontFamily: 'inherit', boxSizing: 'border-box' }}
                 />
               </div>
               {error && <p style={{ fontSize: 13, color: '#DC2626', marginBottom: 10 }}>{error}</p>}
@@ -221,8 +244,8 @@ export function NewEntry() {
                 <button onClick={() => navigate(-1)} style={{ flex: 1, padding: 14, borderRadius: 14, border: 'none', cursor: 'pointer', background: 'rgba(118,118,128,.12)', fontSize: 15, fontWeight: 500, color: '#3C3C43', fontFamily: 'inherit' }}>
                   Скасувати
                 </button>
-                <button onClick={handleParseProject} disabled={!projectText.trim() || parsing}
-                  style={{ flex: 2, padding: 14, borderRadius: 14, border: 'none', cursor: projectText.trim() ? 'pointer' : 'not-allowed', background: projectText.trim() ? '#111' : '#C7C7CC', fontSize: 17, fontWeight: 700, color: '#fff', fontFamily: 'inherit' }}>
+                <button onClick={handleParseProject} disabled={(!projectText.trim() && !projectTitle.trim()) || parsing}
+                  style={{ flex: 2, padding: 14, borderRadius: 14, border: 'none', cursor: (projectText.trim() || projectTitle.trim()) ? 'pointer' : 'not-allowed', background: (projectText.trim() || projectTitle.trim()) ? '#111' : '#C7C7CC', fontSize: 17, fontWeight: 700, color: '#fff', fontFamily: 'inherit' }}>
                   {parsing ? '✦ Аналізую...' : '✦ Далі →'}
                 </button>
               </div>
