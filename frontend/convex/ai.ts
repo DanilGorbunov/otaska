@@ -234,22 +234,24 @@ export const parseProjectTasks = action({
 })
 
 // AI matching: given one entry, find relevant open entries from other users
+type EntryLike = { _id: string; clientId: string; title: string; description?: string; city?: string; category?: string; intentType: string }
+
 export const findMatches = action({
   args: { entryId: v.id("entries") },
-  handler: async (ctx, { entryId }) => {
+  handler: async (ctx, { entryId }): Promise<EntryLike[]> => {
     const entry = await ctx.runQuery(api.entries.get, { id: entryId })
     if (!entry) return []
 
-    const allOpen = await ctx.runQuery(api.entries.listOpen, {})
+    const allOpen = (await ctx.runQuery(api.entries.listOpen, {})) as EntryLike[]
     const dismissed = new Set(entry.aiDismissedIds ?? [])
-    const others = allOpen.filter((e: { _id: string; clientId: string }) => e._id !== entryId && e.clientId !== entry.clientId && !dismissed.has(e._id))
+    const others: EntryLike[] = allOpen.filter((e) => e._id !== entryId && e.clientId !== entry.clientId && !dismissed.has(e._id))
     if (others.length === 0) return []
 
     const apiKey = process.env.OPENAI_API_KEY
     if (!apiKey) return []
 
     const entryDesc = `${entry.title}. ${entry.description ?? ''}. Місто: ${entry.city ?? 'невідомо'}. Категорія: ${entry.category ?? 'інше'}. Тип: ${entry.intentType}.`
-    const candidatesText = others.slice(0, 30).map((o: { _id: string; title: string; description?: string; city?: string; category?: string; intentType: string }, i: number) =>
+    const candidatesText = others.slice(0, 30).map((o, i) =>
       `[${i}] id=${o._id} | ${o.title} | ${o.description ?? ''} | місто: ${o.city ?? '?'} | категорія: ${o.category ?? '?'} | тип: ${o.intentType}`
     ).join('\n')
 
@@ -291,15 +293,14 @@ ${candidatesText}
       const parsed = JSON.parse(content) as { matches?: number[] }
       const indices: number[] = parsed.matches ?? []
       const matched = indices.filter((i: number) => i >= 0 && i < others.length).map((i: number) => others[i])
-      // Cache results on the entry so Dashboard can show count without re-running AI
-      const first = matched[0] as { _id: string; title: string; city?: string } | undefined
+      const first = matched[0]
       await ctx.runMutation(api.entries.saveAiMatchCache, {
         entryId,
         count: matched.length,
         firstId: first?._id,
         firstTitle: first?.title,
         firstCity: first?.city,
-        matchIds: matched.map((m: { _id: string }) => m._id),
+        matchIds: matched.map((m) => m._id),
       })
       return matched
     } catch {

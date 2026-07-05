@@ -184,7 +184,7 @@ export const update = mutation({
     city: v.optional(v.string()),
     budgetMin: v.optional(v.number()),
     budgetMax: v.optional(v.number()),
-    status: v.optional(v.string()),
+    status: v.optional(v.union(v.literal("draft"), v.literal("open"), v.literal("in_progress"), v.literal("done"), v.literal("cancelled"))),
   },
   handler: async (ctx, { id, ...fields }) => {
     const userId = await getAuthUserId(ctx)

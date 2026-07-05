@@ -16,7 +16,7 @@ export const send = internalAction({
     url: v.optional(v.string()),
     badgeCount: v.optional(v.number()),
   },
-  handler: async (_ctx, { subscriptions, title, body, url }) => {
+  handler: async (_ctx, { subscriptions, title, body, url, badgeCount }) => {
     webpush.setVapidDetails(
       "mailto:danilgorbunov@gmail.com",
       process.env.VAPID_PUBLIC_KEY!,
