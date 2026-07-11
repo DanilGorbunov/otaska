@@ -1,7 +1,9 @@
 import { query, mutation } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { v } from "convex/values"
+import { internal } from "./_generated/api"
 import type { Id } from "./_generated/dataModel"
+import { trackEvent } from "./analytics"
 
 const intentTypeV = v.union(
   v.literal("seeking_service"),
@@ -34,8 +36,10 @@ export const listOpen = query({
     city: v.optional(v.string()),
     intentType: v.optional(v.string()),
     category: v.optional(v.string()),
+    budgetMin: v.optional(v.number()),
+    budgetMax: v.optional(v.number()),
   },
-  handler: async (ctx, { city, intentType, category }) => {
+  handler: async (ctx, { city, intentType, category, budgetMin, budgetMax }) => {
     const results = await ctx.db
       .query("entries")
       .withIndex("by_status", (q) => q.eq("status", "open"))
@@ -45,6 +49,8 @@ export const listOpen = query({
       if (intentType && e.intentType !== intentType) return false
       if (category && e.category !== category) return false
       if (city && e.city && !e.city.toLowerCase().includes(city.toLowerCase())) return false
+      if (budgetMin != null && e.budgetMax != null && e.budgetMax < budgetMin) return false
+      if (budgetMax != null && e.budgetMin != null && e.budgetMin > budgetMax) return false
       return true
     })
   },
@@ -84,7 +90,40 @@ export const saveAiMatchCache = mutation({
     matchIds: v.optional(v.array(v.string())),
   },
   handler: async (ctx, { entryId, count, firstId, firstTitle, firstCity, matchIds }) => {
+    const entry = await ctx.db.get(entryId)
+    const previousIds = new Set(entry?.aiMatchIds ?? [])
+    const newIds = (matchIds ?? []).filter((id) => !previousIds.has(id))
+
     await ctx.db.patch(entryId, { aiMatchCount: count, aiMatchFirstId: firstId, aiMatchFirstTitle: firstTitle, aiMatchFirstCity: firstCity, aiMatchIds: matchIds })
+
+    if (newIds.length > 0 && entry) {
+      const ownerSubs = await ctx.db
+        .query("pushSubscriptions")
+        .withIndex("by_user", (q) => q.eq("userId", entry.clientId))
+        .collect()
+      if (ownerSubs.length > 0) {
+        await ctx.scheduler.runAfter(0, internal.pushNotifications.send, {
+          subscriptions: ownerSubs.map((s) => ({ endpoint: s.endpoint, p256dh: s.p256dh, auth: s.auth })),
+          title: "Знайдено відповідність 🎯",
+          body: firstTitle ? `${firstTitle}${firstCity ? ` · ${firstCity}` : ''}` : `Знайдено нові збіги для «${entry.title}»`,
+          url: `/app/entries/${entryId}`,
+        })
+      }
+    }
+  },
+})
+
+// Sum of aiMatchCount across the caller's own open entries — used for the TabBar dot indicator
+export const myMatchCount = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) return 0
+    const mine = await ctx.db
+      .query("entries")
+      .withIndex("by_client", (q) => q.eq("clientId", userId))
+      .take(50)
+    return mine.reduce((sum, e) => sum + (e.aiMatchCount ?? 0), 0)
   },
 })
 
@@ -217,6 +256,26 @@ export const listTasks = query({
   },
 })
 
+// Bulk-applies AI-inferred sequencing (order + dependencies) to a project's tasks
+export const setTaskOrder = mutation({
+  args: {
+    entries: v.array(v.object({
+      id: v.id("entries"),
+      order: v.number(),
+      dependsOn: v.array(v.id("entries")),
+    })),
+  },
+  handler: async (ctx, { entries }) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+    for (const e of entries) {
+      const task = await ctx.db.get(e.id)
+      if (!task || task.clientId !== userId) continue
+      await ctx.db.patch(e.id, { taskOrder: e.order, dependsOnTaskIds: e.dependsOn })
+    }
+  },
+})
+
 export const createTask = mutation({
   args: {
     projectId: v.id("entries"),
@@ -277,6 +336,13 @@ export const createAndPublish = mutation({
     budgetMax: v.optional(v.number()),
     skills: v.optional(v.array(v.string())),
     urgency: v.optional(v.string()),
+    photoStorageId: v.optional(v.id("_storage")),
+    aiDiagnosis: v.optional(v.object({
+      category: v.string(),
+      urgency: v.string(),
+      priceMin: v.number(),
+      priceMax: v.number(),
+    })),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx)
@@ -287,6 +353,7 @@ export const createAndPublish = mutation({
       status: "open",
       currency: "EUR",
     })
+    await trackEvent(ctx, "entry_posted", { userId, entryId: id, meta: { entryType: args.entryType, category: args.category } })
     return id
   },
 })

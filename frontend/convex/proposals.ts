@@ -2,6 +2,7 @@ import { query, mutation } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { v } from "convex/values"
 import { internal } from "./_generated/api"
+import { trackEvent } from "./analytics"
 
 export const listForEntry = query({
   args: { entryId: v.id("entries") },
@@ -9,7 +10,8 @@ export const listForEntry = query({
     const props = await ctx.db.query("proposals").withIndex("by_entry", q => q.eq("entryId", entryId)).take(50)
     return Promise.all(props.map(async p => {
       const user = await ctx.db.get(p.providerId)
-      return { ...p, providerName: user?.name ?? user?.email?.split('@')[0] ?? 'Користувач' }
+      const profile = await ctx.db.query("userProfiles").withIndex("by_user", q => q.eq("userId", p.providerId)).first()
+      return { ...p, providerName: user?.name ?? user?.email?.split('@')[0] ?? 'Користувач', providerVerified: profile?.verified ?? false }
     }))
   },
 })
@@ -76,6 +78,8 @@ export const create = mutation({
       read: false,
     })
 
+    await trackEvent(ctx, "proposal_made", { userId, entryId: args.entryId, meta: { price: args.price } })
+
     return proposalId
   },
 })
@@ -111,6 +115,8 @@ export const accept = mutation({
       text: "✅ Я прийняв вашу пропозицію! Можемо починати.",
       read: false,
     })
+
+    await trackEvent(ctx, "proposal_accepted", { userId, entryId: proposal.entryId })
   },
 })
 
@@ -178,6 +184,8 @@ export const mockPay = mutation({
       text: `💰 Оплату €${proposal.price ?? '—'} надіслано! Дякуємо за роботу.`,
       read: false,
     })
+
+    await trackEvent(ctx, "booking_done", { userId, entryId: proposal.entryId, meta: { price: proposal.price } })
   },
 })
 

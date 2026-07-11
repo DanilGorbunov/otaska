@@ -33,6 +33,7 @@ export const updateProfile = mutation({
     bio: v.optional(v.string()),
     phone: v.optional(v.string()),
     isProvider: v.optional(v.boolean()),
+    locale: v.optional(v.string()),
     skills: v.optional(v.array(v.string())),
     category: v.optional(v.string()),
     hourlyRate: v.optional(v.number()),
@@ -40,6 +41,16 @@ export const updateProfile = mutation({
     priceTo: v.optional(v.number()),
     availability: v.optional(v.string()),
     avatar: v.optional(v.string()),
+    isCompany: v.optional(v.boolean()),
+    companyName: v.optional(v.string()),
+    companyLegalForm: v.optional(v.string()),
+    companyRegNumber: v.optional(v.string()),
+    vatNumber: v.optional(v.string()),
+    companyCountry: v.optional(v.string()),
+    companyAddress: v.optional(v.string()),
+    companyWebsite: v.optional(v.string()),
+    companyPhone: v.optional(v.string()),
+    companyIban: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx)
@@ -124,5 +135,21 @@ export const ensureProfile = mutation({
         jobsCompleted: 0,
       })
     }
+  },
+})
+
+// Manual verification toggle — gated to a hardcoded admin allowlist (no role system yet)
+export const setVerified = mutation({
+  args: { userId: v.id("users"), verified: v.boolean() },
+  handler: async (ctx, { userId, verified }) => {
+    const callerId = await getAuthUserId(ctx)
+    if (!callerId) throw new Error("Not authenticated")
+    const caller = await ctx.db.get(callerId)
+    const admins = (process.env.ADMIN_EMAILS ?? "").split(",").map(e => e.trim().toLowerCase()).filter(Boolean)
+    if (!caller?.email || !admins.includes(caller.email.toLowerCase())) throw new Error("Not authorized")
+
+    const profile = await ctx.db.query("userProfiles").withIndex("by_user", q => q.eq("userId", userId)).first()
+    if (!profile) throw new Error("Profile not found")
+    await ctx.db.patch(profile._id, { verified, verifiedAt: verified ? Date.now() : undefined })
   },
 })

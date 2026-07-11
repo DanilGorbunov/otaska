@@ -1,0 +1,4 @@
+{
+  "nav": { "entries": "Záznamy", "browse": "Hľadať", "chat": "Chat", "profile": "Profil" },
+  "common": { "loading": "Načítava sa...", "cancel": "Zrušiť", "save": "Uložiť", "search": "Hľadať..." }
+}

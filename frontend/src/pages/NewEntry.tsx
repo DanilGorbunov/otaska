@@ -40,8 +40,16 @@ export function NewEntry() {
   const createDraft = useMutation(api.entries.create)
   const createTask = useMutation(api.entries.createTask)
   const parseProjectFull = useAction(api.ai.parseProjectFull)
+  const generateUploadUrl = useMutation(api.storage.generateUploadUrl)
+  const diagnosePhoto = useAction(api.ai.diagnosePhoto)
 
-  const [mode, setMode] = useState<'entry' | 'project'>('entry')
+  const [mode, setMode] = useState<'entry' | 'project' | 'photo'>('entry')
+
+  // Photo mode
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [photoStorageId, setPhotoStorageId] = useState<Id<'_storage'> | null>(null)
+  const [diagnosis, setDiagnosis] = useState<{ category: string; urgency: string; priceMin: number; priceMax: number } | null>(null)
+  const [diagnosing, setDiagnosing] = useState(false)
 
   // Entry mode
   const [text, setText] = useState('')
@@ -125,6 +133,50 @@ export function NewEntry() {
     }
   }
 
+  const handlePhotoSelect = async (file: File) => {
+    setPhotoPreview(URL.createObjectURL(file))
+    setDiagnosis(null)
+    setError('')
+    setDiagnosing(true)
+    try {
+      const uploadUrl = await generateUploadUrl()
+      const res = await fetch(uploadUrl, { method: 'POST', headers: { 'Content-Type': file.type }, body: file })
+      const { storageId } = await res.json() as { storageId: Id<'_storage'> }
+      setPhotoStorageId(storageId)
+      const result = await diagnosePhoto({ storageId })
+      setDiagnosis(result)
+    } catch (e) {
+      setError((e as Error)?.message ?? 'Помилка діагностики фото')
+    } finally {
+      setDiagnosing(false)
+    }
+  }
+
+  const handlePhotoSubmit = async () => {
+    if (!diagnosis) return
+    setSubmitting(true)
+    setError('')
+    try {
+      await createAndPublish({
+        title: `${diagnosis.category} · фото-діагностика`,
+        description: 'Створено з фото через AI-діагностику',
+        intentType: 'seeking_service',
+        entryType: 'on_demand',
+        category: diagnosis.category,
+        city: 'Bratislava',
+        budgetMin: diagnosis.priceMin,
+        budgetMax: diagnosis.priceMax,
+        urgency: diagnosis.urgency,
+        photoStorageId: photoStorageId ?? undefined,
+        aiDiagnosis: diagnosis,
+      })
+      navigate(-1)
+    } catch (e: unknown) {
+      setError((e as Error)?.message ?? 'Помилка')
+      setSubmitting(false)
+    }
+  }
+
   const toggleTask = (i: number) => {
     setParsed(prev => prev ? { ...prev, tasks: prev.tasks.map((t, j) => j === i ? { ...t, selected: !t.selected } : t) } : prev)
   }
@@ -164,7 +216,7 @@ export function NewEntry() {
           {/* Mode tabs — only in step 1 */}
           {!parsed && (
             <div style={{ display: 'flex', gap: 2, padding: 2, background: 'rgba(118,118,128,.12)', borderRadius: 9, marginBottom: 16 }}>
-              {(['entry', 'project'] as const).map(m => (
+              {(['entry', 'project', 'photo'] as const).map(m => (
                 <button key={m} onClick={() => setMode(m)} style={{
                   flex: 1, padding: '7px 0', borderRadius: 8, border: 'none', cursor: 'pointer',
                   background: mode === m ? '#fff' : 'transparent',
@@ -173,7 +225,7 @@ export function NewEntry() {
                   boxShadow: mode === m ? '0 1px 3px rgba(0,0,0,.12)' : 'none',
                   transition: 'all .15s',
                 }}>
-                  {m === 'entry' ? 'Запис' : 'Проєкт'}
+                  {m === 'entry' ? 'Запис' : m === 'project' ? 'Проєкт' : '📷 Фото'}
                 </button>
               ))}
             </div>
@@ -206,6 +258,54 @@ export function NewEntry() {
                 style={{ width: '100%', padding: '12px 14px', borderRadius: 14, border: '1.5px solid #EDE8DF', cursor: text.trim() ? 'pointer' : 'not-allowed', background: '#fff', fontSize: 14, fontWeight: 500, color: text.trim() ? '#5A4A2E' : '#C7C7CC', fontFamily: 'inherit' }}>
                 🔒 Зберегти як чернетку
               </button>
+            </>
+          )}
+
+          {/* ── PHOTO MODE ── */}
+          {mode === 'photo' && (
+            <>
+              <div style={{ background: '#fff', borderRadius: 18, padding: '14px 16px', marginBottom: 12, border: '1.5px solid #EDE8DF', boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
+                {photoPreview ? (
+                  <img src={photoPreview} alt="" style={{ width: '100%', maxHeight: 220, objectFit: 'cover', borderRadius: 12, marginBottom: 10 }} />
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '24px 0', color: '#9A8060' }}>
+                    <div style={{ fontSize: 32, marginBottom: 8 }}>📷</div>
+                    <div style={{ fontSize: 13 }}>Сфотографуй проблему — протікання, тріщину, поламку</div>
+                  </div>
+                )}
+                <label style={{ display: 'block' }}>
+                  <input type="file" accept="image/*" style={{ display: 'none' }}
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handlePhotoSelect(f) }} />
+                  <div style={{ width: '100%', padding: 12, borderRadius: 12, border: '1.5px solid #EDE8DF', textAlign: 'center', cursor: 'pointer', fontSize: 14, fontWeight: 600, color: '#1A1612' }}>
+                    {photoPreview ? 'Обрати інше фото' : 'Обрати фото'}
+                  </div>
+                </label>
+              </div>
+
+              {diagnosing && (
+                <div style={{ textAlign: 'center', padding: 16, color: '#9A8060', fontSize: 13 }}>✦ AI аналізує фото...</div>
+              )}
+
+              {diagnosis && (
+                <div style={{ background: '#fff', borderRadius: 18, padding: '16px', marginBottom: 12, border: '1.5px solid #EDE8DF' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Діагноз AI</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#1A1612', marginBottom: 4 }}>{diagnosis.category}</div>
+                  <div style={{ fontSize: 13, color: '#9A8060', marginBottom: 8 }}>{diagnosis.urgency}</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: '#EF9F27' }}>€{diagnosis.priceMin}–{diagnosis.priceMax}</div>
+                </div>
+              )}
+
+              {error && <p style={{ fontSize: 13, color: '#DC2626', marginBottom: 10 }}>{error}</p>}
+
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={() => navigate(-1)} style={{ flex: 1, padding: 14, borderRadius: 14, border: 'none', cursor: 'pointer', background: 'rgba(118,118,128,.12)', fontSize: 15, fontWeight: 500, color: '#3C3C43', fontFamily: 'inherit' }}>
+                  Скасувати
+                </button>
+                <button onClick={handlePhotoSubmit} disabled={!diagnosis || submitting}
+                  style={{ flex: 2, padding: 14, borderRadius: 14, border: 'none', cursor: diagnosis ? 'pointer' : 'not-allowed', background: diagnosis ? '#111' : '#C7C7CC', fontSize: 17, fontWeight: 700, color: '#fff', fontFamily: 'inherit' }}>
+                  {submitting ? 'Зберігаємо...' : 'Опублікувати →'}
+                </button>
+              </div>
             </>
           )}
 

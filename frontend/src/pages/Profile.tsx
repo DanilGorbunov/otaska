@@ -4,6 +4,7 @@ import { useMutation, useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
 import { useAuthActions } from '@convex-dev/auth/react'
+import { LanguageSwitcher } from '../components/LanguageSwitcher'
 
 const CATEGORIES = ['Електрика', 'Сантехніка', 'Ремонт', 'Малярство', 'Плитка', 'Теслярство', 'Прибирання', 'Переїзд', 'Ландшафт', 'Інше']
 const SKILL_OPTIONS = ['Електрика', 'Сантехніка', 'Малярство', 'Штукатурка', 'Плитка', 'Теслярство', 'Зварювання', 'Гіпсокартон', 'Підлога', 'Покрівля', 'Прибирання', 'Переїзд', 'Ландшафт', 'Будівництво']
@@ -53,6 +54,16 @@ export function Profile() {
   const [priceFrom, setPriceFrom] = useState('')
   const [priceTo, setPriceTo] = useState('')
   const [availability, setAvailability] = useState('')
+  const [isCompany, setIsCompany] = useState(false)
+  const [companyName, setCompanyName] = useState('')
+  const [companyLegalForm, setCompanyLegalForm] = useState('')
+  const [companyRegNumber, setCompanyRegNumber] = useState('')
+  const [vatNumber, setVatNumber] = useState('')
+  const [companyCountry, setCompanyCountry] = useState('')
+  const [companyAddress, setCompanyAddress] = useState('')
+  const [companyWebsite, setCompanyWebsite] = useState('')
+  const [companyPhone, setCompanyPhone] = useState('')
+  const [companyIban, setCompanyIban] = useState('')
   const [editingCaption, setEditingCaption] = useState<string | null>(null)
   const [captionText, setCaptionText] = useState('')
   const portfolioRef = useRef<HTMLInputElement>(null)
@@ -85,6 +96,16 @@ export function Profile() {
     setPriceFrom(profile?.priceFrom ? String(profile.priceFrom) : '')
     setPriceTo(profile?.priceTo ? String(profile.priceTo) : '')
     setAvailability(profile?.availability ?? '')
+    setIsCompany(profile?.isCompany ?? false)
+    setCompanyName(profile?.companyName ?? '')
+    setCompanyLegalForm(profile?.companyLegalForm ?? '')
+    setCompanyRegNumber(profile?.companyRegNumber ?? '')
+    setVatNumber(profile?.vatNumber ?? '')
+    setCompanyCountry(profile?.companyCountry ?? '')
+    setCompanyAddress(profile?.companyAddress ?? '')
+    setCompanyWebsite(profile?.companyWebsite ?? '')
+    setCompanyPhone(profile?.companyPhone ?? '')
+    setCompanyIban(profile?.companyIban ?? '')
     setEditing(true)
   }
 
@@ -102,6 +123,16 @@ export function Profile() {
         priceFrom: priceFrom ? Number(priceFrom) : undefined,
         priceTo: priceTo ? Number(priceTo) : undefined,
         availability: availability || undefined,
+        isCompany,
+        companyName: companyName || undefined,
+        companyLegalForm: companyLegalForm || undefined,
+        companyRegNumber: companyRegNumber || undefined,
+        vatNumber: vatNumber || undefined,
+        companyCountry: companyCountry || undefined,
+        companyAddress: companyAddress || undefined,
+        companyWebsite: companyWebsite || undefined,
+        companyPhone: companyPhone || undefined,
+        companyIban: companyIban || undefined,
       })
       setEditing(false)
     } finally { setSaving(false) }
@@ -115,6 +146,10 @@ export function Profile() {
   }
 
   const toggleSkill = (s: string) => setSkills(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])
+
+  const fieldStyle: React.CSSProperties = { width: '100%', padding: '11px 12px', borderRadius: 10, border: '1.5px solid #EDE8DF', fontSize: 14, fontFamily: 'inherit', background: '#F9F9F9', outline: 'none', boxSizing: 'border-box', color: '#1A1612' }
+  const focusStyle = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = '#1A1612'; e.currentTarget.style.background = '#fff' }
+  const blurStyle = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = '#EDE8DF'; e.currentTarget.style.background = '#F9F9F9' }
 
   return (
     <div style={{ background: '#F2F2F7', minHeight: '100dvh', paddingBottom: 40 }}>
@@ -160,35 +195,49 @@ export function Profile() {
 
         {/* Info card — name + bio + stats in one block */}
         <div style={{ background: '#fff', borderRadius: 18, padding: '18px', marginBottom: 12, boxShadow: '0 2px 12px rgba(0,0,0,.06)', border: '1.5px solid #EDE8DF' }}>
-          <div style={{ fontSize: 22, fontWeight: 800, color: '#1A1612', letterSpacing: '-.4px', marginBottom: 2 }}>{displayName}</div>
-          {user?.email && <div style={{ fontSize: 13, color: '#9A8060', marginBottom: 8 }}>{user.email}</div>}
-          {profile?.bio
-            ? <p style={{ fontSize: 14, color: '#5A4A2E', lineHeight: 1.65, margin: '0 0 10px' }}>{profile.bio}</p>
-            : <p style={{ fontSize: 14, color: '#C0B49A', fontStyle: 'italic', margin: '0 0 10px' }}>Додайте опис профілю</p>
-          }
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: profile?.isProvider ? 14 : 0 }}>
-            {profile?.city && <span style={{ fontSize: 13, color: '#9A8060' }}>📍 {profile.city}</span>}
-            {profile?.category && <span style={{ fontSize: 13, color: '#9A8060' }}>🔧 {profile.category}</span>}
-            {profile?.availability && <span style={{ fontSize: 13, color: '#9A8060' }}>🕐 {profile.availability}</span>}
-          </div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+            {/* Left: name + email + bio + badges */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#1A1612', letterSpacing: '-.4px' }}>{displayName}</div>
+                {profile?.verified && (
+                  <span title="Верифікований" style={{
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    width: 18, height: 18, borderRadius: '50%', background: '#EF9F27', color: '#fff', fontSize: 11, fontWeight: 900, flexShrink: 0,
+                  }}>✓</span>
+                )}
+              </div>
+              {user?.email && <div style={{ fontSize: 13, color: '#9A8060', marginBottom: 8 }}>{user.email}</div>}
+              {profile?.isProvider && !profile?.verified && (
+                <div style={{ fontSize: 12, color: '#9A8060', marginBottom: 8 }}>Профіль ще не верифіковано</div>
+              )}
+              {profile?.bio
+                ? <p style={{ fontSize: 13, color: '#5A4A2E', lineHeight: 1.6, margin: '0 0 8px' }}>{profile.bio}</p>
+                : <p style={{ fontSize: 13, color: '#C0B49A', fontStyle: 'italic', margin: '0 0 8px' }}>Додайте опис профілю</p>
+              }
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                {profile?.city && <span style={{ fontSize: 12, color: '#9A8060' }}>📍 {profile.city}</span>}
+                {profile?.category && <span style={{ fontSize: 12, color: '#9A8060' }}>🔧 {profile.category}</span>}
+                {profile?.availability && <span style={{ fontSize: 12, color: '#9A8060' }}>🕐 {profile.availability}</span>}
+              </div>
+            </div>
 
-          {profile?.isProvider && (
-            <>
-              <div style={{ height: 1, background: '#F0EBE3', marginBottom: 14 }} />
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 0 }}>
+            {/* Right: stats (only for providers) */}
+            {profile?.isProvider && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0, borderLeft: '1px solid #F0EBE3', paddingLeft: 14 }}>
                 {[
-                  { val: profile.rating > 0 ? profile.rating.toFixed(1) : '—', label: 'Рейтинг', icon: '⭐' },
-                  { val: String(profile.jobsCompleted), label: 'Замовлень', icon: '✅' },
-                  { val: profile.priceFrom && profile.priceTo ? `€${profile.priceFrom}–${profile.priceTo}` : profile.hourlyRate ? `€${profile.hourlyRate}/год` : '—', label: 'Ціна', icon: '💶' },
+                  { val: profile.rating > 0 ? profile.rating.toFixed(1) : '—', label: 'Рейтинг' },
+                  { val: String(profile.jobsCompleted), label: 'Замовлень' },
+                  { val: profile.priceFrom && profile.priceTo ? `€${profile.priceFrom}–${profile.priceTo}` : profile.hourlyRate ? `€${profile.hourlyRate}/год` : '—', label: 'Ціна' },
                 ].map((s, i) => (
-                  <div key={i} style={{ textAlign: 'center', padding: '4px 0', borderRight: i < 2 ? '1px solid #F0EBE3' : 'none' }}>
-                    <div style={{ fontSize: 11, color: '#9A8060', marginBottom: 3 }}>{s.label}</div>
-                    <div style={{ fontSize: 17, fontWeight: 800, color: '#1A1612' }}>{s.val}</div>
+                  <div key={i} style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: '#1A1612', lineHeight: 1 }}>{s.val}</div>
+                    <div style={{ fontSize: 10, color: '#9A8060', marginTop: 2 }}>{s.label}</div>
                   </div>
                 ))}
               </div>
-            </>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Skills */}
@@ -256,6 +305,12 @@ export function Profile() {
               ))}
             </div>
           )}
+        </div>
+
+        {/* Language */}
+        <div style={{ marginTop: 8, marginBottom: 8 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#9A8060', marginBottom: 8 }}>Мова</div>
+          <LanguageSwitcher />
         </div>
 
         {/* Sign out */}
@@ -358,6 +413,89 @@ export function Profile() {
                       style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1.5px solid #EDE8DF', fontSize: 15, fontFamily: 'inherit', background: '#fff', outline: 'none', boxSizing: 'border-box', color: '#1A1612' }} />
                   </div>
                 </>
+              )}
+
+              {/* Company toggle */}
+              <div style={{ height: 1, background: '#EDE8DF', margin: '4px 0 16px' }} />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', borderRadius: 14, padding: '14px 16px', marginBottom: 14, border: '1.5px solid #EDE8DF' }}>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#1A1612' }}>🏢 У мене є фірма</div>
+                  <div style={{ fontSize: 12, color: '#9A8060' }}>Додати реквізити компанії</div>
+                </div>
+                <div onClick={() => setIsCompany(p => !p)} style={{ width: 50, height: 28, borderRadius: 99, background: isCompany ? '#EF9F27' : '#E5E5EA', cursor: 'pointer', position: 'relative', transition: 'background .2s', flexShrink: 0 }}>
+                  <div style={{ position: 'absolute', top: 3, left: isCompany ? 24 : 3, width: 22, height: 22, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,.2)', transition: 'left .2s' }} />
+                </div>
+              </div>
+
+              {isCompany && (
+                <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #EDE8DF', padding: '16px', marginBottom: 16 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 14 }}>Дані компанії</div>
+
+                  {/* Company name + legal form */}
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                    <div style={{ flex: 2 }}>
+                      <div style={{ fontSize: 11, color: '#9A8060', marginBottom: 4 }}>Назва компанії</div>
+                      <input value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder="Acme Construction"
+                        style={fieldStyle} onFocus={focusStyle} onBlur={blurStyle} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 11, color: '#9A8060', marginBottom: 4 }}>Правова форма</div>
+                      <input value={companyLegalForm} onChange={e => setCompanyLegalForm(e.target.value)} placeholder="s.r.o. / GmbH"
+                        style={fieldStyle} onFocus={focusStyle} onBlur={blurStyle} />
+                    </div>
+                  </div>
+
+                  {/* Reg number + VAT */}
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 11, color: '#9A8060', marginBottom: 4 }}>IČO / Reg. number</div>
+                      <input value={companyRegNumber} onChange={e => setCompanyRegNumber(e.target.value)} placeholder="12345678"
+                        style={fieldStyle} onFocus={focusStyle} onBlur={blurStyle} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 11, color: '#9A8060', marginBottom: 4 }}>IČ DPH / VAT ID</div>
+                      <input value={vatNumber} onChange={e => setVatNumber(e.target.value)} placeholder="SK1234567890"
+                        style={fieldStyle} onFocus={focusStyle} onBlur={blurStyle} />
+                    </div>
+                  </div>
+
+                  {/* Country + address */}
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 11, color: '#9A8060', marginBottom: 4 }}>Країна реєстрації</div>
+                    <input value={companyCountry} onChange={e => setCompanyCountry(e.target.value)} placeholder="Словаччина"
+                      style={fieldStyle} onFocus={focusStyle} onBlur={blurStyle} />
+                  </div>
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 11, color: '#9A8060', marginBottom: 4 }}>Юридична адреса</div>
+                    <input value={companyAddress} onChange={e => setCompanyAddress(e.target.value)} placeholder="вул. Головна 1, Братислава, 81101"
+                      style={fieldStyle} onFocus={focusStyle} onBlur={blurStyle} />
+                  </div>
+
+                  {/* Website + phone */}
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 11, color: '#9A8060', marginBottom: 4 }}>Сайт</div>
+                      <input value={companyWebsite} onChange={e => setCompanyWebsite(e.target.value)} placeholder="acme.sk"
+                        style={fieldStyle} onFocus={focusStyle} onBlur={blurStyle} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 11, color: '#9A8060', marginBottom: 4 }}>Телефон компанії</div>
+                      <input value={companyPhone} onChange={e => setCompanyPhone(e.target.value)} placeholder="+421 900 000 000"
+                        style={fieldStyle} onFocus={focusStyle} onBlur={blurStyle} />
+                    </div>
+                  </div>
+
+                  {/* IBAN */}
+                  <div>
+                    <div style={{ fontSize: 11, color: '#9A8060', marginBottom: 4 }}>IBAN</div>
+                    <input value={companyIban} onChange={e => setCompanyIban(e.target.value)} placeholder="SK00 0000 0000 0000 0000 0000"
+                      style={fieldStyle} onFocus={focusStyle} onBlur={blurStyle} />
+                  </div>
+
+                  <div style={{ fontSize: 11, color: '#C0B49A', marginTop: 12, lineHeight: 1.5 }}>
+                    * Всі поля необов'язкові. Дані видно лише вам та замовникам при укладанні договору.
+                  </div>
+                </div>
               )}
 
               <button onClick={save} disabled={saving}

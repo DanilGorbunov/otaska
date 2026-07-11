@@ -1,0 +1,4 @@
+{
+  "nav": { "entries": "Entries", "browse": "Browse", "chat": "Chat", "profile": "Profile" },
+  "common": { "loading": "Loading...", "cancel": "Cancel", "save": "Save", "search": "Search..." }
+}

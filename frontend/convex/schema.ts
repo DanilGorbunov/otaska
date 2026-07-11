@@ -11,6 +11,9 @@ export default defineSchema({
     bio: v.optional(v.string()),
     phone: v.optional(v.string()),
     isProvider: v.boolean(),
+    locale: v.optional(v.string()),
+    verified: v.optional(v.boolean()),
+    verifiedAt: v.optional(v.number()),
     skills: v.optional(v.array(v.string())),
     category: v.optional(v.string()),
     hourlyRate: v.optional(v.number()),
@@ -26,6 +29,16 @@ export default defineSchema({
       storageId: v.id("_storage"),
       caption: v.optional(v.string()),
     }))),
+    isCompany: v.optional(v.boolean()),
+    companyName: v.optional(v.string()),
+    companyLegalForm: v.optional(v.string()),
+    companyRegNumber: v.optional(v.string()),
+    vatNumber: v.optional(v.string()),
+    companyCountry: v.optional(v.string()),
+    companyAddress: v.optional(v.string()),
+    companyWebsite: v.optional(v.string()),
+    companyPhone: v.optional(v.string()),
+    companyIban: v.optional(v.string()),
   }).index("by_user", ["userId"])
     .index("by_provider", ["isProvider"]),
 
@@ -75,6 +88,15 @@ export default defineSchema({
     aiMatchFirstCity: v.optional(v.string()),
     aiMatchIds: v.optional(v.array(v.string())),
     aiDismissedIds: v.optional(v.array(v.string())),
+    photoStorageId: v.optional(v.id("_storage")),
+    aiDiagnosis: v.optional(v.object({
+      category: v.string(),
+      urgency: v.string(),
+      priceMin: v.number(),
+      priceMax: v.number(),
+    })),
+    taskOrder: v.optional(v.number()),
+    dependsOnTaskIds: v.optional(v.array(v.id("entries"))),
   })
     .index("by_client", ["clientId"])
     .index("by_status", ["status"])
@@ -116,4 +138,11 @@ export default defineSchema({
   })
     .index("by_from", ["fromId"])
     .index("by_to", ["toId"]),
+
+  analyticsEvents: defineTable({
+    userId: v.optional(v.id("users")),
+    event: v.string(),
+    entryId: v.optional(v.id("entries")),
+    meta: v.optional(v.any()),
+  }).index("by_event", ["event"]),
 })

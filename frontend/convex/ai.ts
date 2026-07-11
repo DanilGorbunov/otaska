@@ -1,8 +1,10 @@
 import { action } from "./_generated/server"
 import { v } from "convex/values"
 import { api } from "./_generated/api"
+import type { Id } from "./_generated/dataModel"
 
-const SYSTEM_PROMPT = `Ти — AI-помічник платформи OTaska (маркетплейс послуг у Братиславі/Празі/Варшаві).
+const SYSTEM_PROMPT = `Ти — AI-помічник платформи OTaska (маркетплейс послуг у Братиславі/Празі/Варшаві — будь-які категорії: будівництво, прибирання, переїзди, репетиторство, ІТ, організація подій, краса, догляд за тваринами, авто тощо, не лише будівництво).
+Категорію визнач з тексту самостійно, вільно — не обмежуйся заздалегідь заданим переліком.
 Користувач написав свій запит. ПЕРШЕ що ти маєш зробити — визначити ХТО ПИШЕ.
 
 ═══ ВИЗНАЧЕННЯ РОЛІ ═══
@@ -199,7 +201,7 @@ export const parseProjectTasks = action({
   "tasks": [
     {
       "title": "Назва завдання (коротко, до 60 символів)",
-      "category": "Електрика | Сантехніка | Малярство | Будівництво | Прибирання | Інше",
+      "category": "коротка назва категорії, визнач вільно з тексту (не лише будівництво — може бути прибирання, ІТ, репетиторство тощо)",
       "budgetMin": 0,
       "budgetMax": 0,
       "intentType": "seeking_service"
@@ -306,5 +308,100 @@ ${candidatesText}
     } catch {
       return []
     }
+  },
+})
+
+export const diagnosePhoto = action({
+  args: { storageId: v.id("_storage") },
+  handler: async (ctx, { storageId }): Promise<{ category: string; urgency: string; priceMin: number; priceMax: number }> => {
+    const apiKey = process.env.OPENAI_API_KEY
+    if (!apiKey) throw new Error("OPENAI_API_KEY not set")
+
+    const imageUrl = await ctx.storage.getUrl(storageId as Id<"_storage">)
+    if (!imageUrl) throw new Error("Photo not found")
+
+    const system = `Ти — AI-експерт платформи OTaska (маркетплейс будівельних послуг у Братиславі/Празі/Варшаві).
+Користувач надіслав фото проблеми (протікання, тріщина, поламка тощо). Визнач:
+1. Категорію робіт (Електрика, Сантехніка, Ремонт, Малярство, Плитка, Теслярство, Будівництво, Інше)
+2. Терміновість ("Терміново", "Протягом тижня", "Не терміново")
+3. Орієнтовну вилку ціни в євро для ринку Центральної Європи
+
+Повертай ТІЛЬКИ JSON:
+{ "category": "Сантехніка", "urgency": "Терміново", "priceMin": 80, "priceMax": 200 }`
+
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: [{ type: "image_url", image_url: { url: imageUrl } }] },
+        ],
+        max_tokens: 200,
+        temperature: 0.2,
+        response_format: { type: "json_object" },
+      }),
+    })
+
+    if (!response.ok) throw new Error(`OpenAI ${response.status}: ${await response.text()}`)
+    const data = await response.json() as { choices: Array<{ message: { content: string } }> }
+    const content = data.choices?.[0]?.message?.content
+    if (!content) throw new Error("Empty response from OpenAI")
+
+    const parsed = JSON.parse(content) as { category: string; urgency: string; priceMin: number; priceMax: number }
+    return parsed
+  },
+})
+
+// Infers standard trade sequencing (e.g. plumbing before tiling, electrics before drywall) for a project's tasks
+export const sequenceProjectTasks = action({
+  args: { projectId: v.id("entries") },
+  handler: async (ctx, { projectId }): Promise<{ order: Array<{ id: string; order: number; dependsOn: string[] }> }> => {
+    const apiKey = process.env.OPENAI_API_KEY
+    if (!apiKey) throw new Error("OPENAI_API_KEY not set")
+
+    const tasks = await ctx.runQuery(api.entries.listTasks, { projectId }) as Array<{ _id: string; title: string; category?: string }>
+    if (tasks.length < 2) return { order: [] }
+
+    const list = tasks.map((t, i) => `[${i}] id=${t._id} | ${t.title} | категорія: ${t.category ?? '?'}`).join('\n')
+
+    const system = `Ти — AI-асистент генпідрядника платформи OTaska. Визнач стандартну послідовність виконання будівельних завдань проєкту (наприклад: сантехніка до плитки, електрика до гіпсокартону, штукатурка до фарбування).
+
+ЗАВДАННЯ ПРОЄКТУ:
+${list}
+
+Поверни ТІЛЬКИ JSON з масивом order, де кожен елемент — { "id": "<id завдання>", "order": <номер послідовності починаючи з 0>, "dependsOn": [<id завдань, які мають бути виконані раніше>] }. Якщо завдання не мають явної залежності — dependsOn: [].
+
+{"order": [{"id": "...", "order": 0, "dependsOn": []}]}`
+
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: system }],
+        max_tokens: 500,
+        temperature: 0.2,
+        response_format: { type: "json_object" },
+      }),
+    })
+
+    if (!response.ok) throw new Error(`OpenAI ${response.status}: ${await response.text()}`)
+    const data = await response.json() as { choices: Array<{ message: { content: string } }> }
+    const content = data.choices?.[0]?.message?.content
+    if (!content) throw new Error("Empty response from OpenAI")
+
+    const parsed = JSON.parse(content) as { order: Array<{ id: string; order: number; dependsOn: string[] }> }
+    const validIds = new Set(tasks.map(t => t._id))
+    const result = { order: (parsed.order ?? []).filter(o => validIds.has(o.id)) }
+
+    await ctx.runMutation(api.entries.setTaskOrder, { entries: result.order.map(o => ({
+      id: o.id as Id<"entries">,
+      order: o.order,
+      dependsOn: o.dependsOn.filter(d => validIds.has(d)) as Id<"entries">[],
+    })) })
+
+    return result
   },
 })

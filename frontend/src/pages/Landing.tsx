@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthActions } from '@convex-dev/auth/react'
 import { useMutation, useAction } from 'convex/react'
 import { api } from '../../convex/_generated/api'
+import { CATEGORIES } from '../lib/categories'
 
 type Step = 1 | 2
 
@@ -47,7 +48,6 @@ export function Landing() {
   const [chatLoading, setChatLoading] = useState(false)
   const [aiResult, setAiResult]           = useState<AIResult | null>(null)
   const [secondAiResult, setSecondAiResult] = useState<AIResult | null>(null)
-  const [askGoalStep, setAskGoalStep]     = useState(false)
   const [secondGoalMode, setSecondGoalMode] = useState(false)
 
   const REG_QUESTIONS = [
@@ -85,11 +85,6 @@ export function Landing() {
         } else {
           setAiResult(parsed.summary)
           setMsgs(prev => [...prev, { role: 'assistant', content: '', card: parsed.summary, cardIndex: 0 }])
-          setTimeout(() => {
-            setAskGoalStep(true)
-            setChips(['Так, додам ще одну', 'Ні, все готово'])
-            setMsgs(prev => [...prev, { role: 'assistant', content: 'Хочеш додати ще одну ціль?' }])
-          }, 600)
         }
       }
     } catch {
@@ -106,7 +101,6 @@ export function Landing() {
     setChips([])
     setAiResult(null)
     setSecondAiResult(null)
-    setAskGoalStep(false)
     setSecondGoalMode(false)
     setRegMode(false)
     setRegStep(0)
@@ -124,23 +118,26 @@ export function Landing() {
     setChips([])
     setChatInput('')
 
-    if (askGoalStep) {
-      setAskGoalStep(false)
-      const yes = text.toLowerCase().includes('так') || text.toLowerCase().includes('додам')
-      if (yes) {
-        setSecondGoalMode(true)
-        setTimeout(() => setMsgs(prev => [...prev, { role: 'assistant', content: 'Опиши другу ціль' }]), 300)
-      } else {
-        setTimeout(() => startRegFields(), 300)
-      }
-      return
-    }
-
     // for second goal: start a fresh AI context so it doesn't inherit first goal's details
     const newMsgs: ChatMsg[] = secondGoalMode
       ? [{ role: 'user', content: text }]
       : [...msgs.filter(m => m.content.trim() !== ''), { role: 'user', content: text }]
     await sendToAI(newMsgs)
+  }
+
+  // Card is a best-guess draft, not a final answer — let the user correct it inline instead of asking
+  const updateCardField = (cardIndex: 0 | 1, field: 'category' | 'budgetMin' | 'budgetMax', value: string) => {
+    const numericFields = field === 'budgetMin' || field === 'budgetMax'
+    const nextValue = numericFields ? Number(value) || 0 : value
+    const apply = (r: AIResult | null) => r ? { ...r, [field]: nextValue } : r
+    if (cardIndex === 0) setAiResult(apply)
+    else setSecondAiResult(apply)
+    setMsgs(prev => prev.map(m => m.card && m.cardIndex === cardIndex ? { ...m, card: apply(m.card) as AIResult } : m))
+  }
+
+  const handleAddSecondGoal = () => {
+    setSecondGoalMode(true)
+    setMsgs(prev => [...prev, { role: 'assistant', content: 'Опиши другу ціль' }])
   }
 
   useEffect(() => {
@@ -183,7 +180,7 @@ export function Landing() {
           // Save pending entries to localStorage BEFORE signIn so auth token is ready when Dashboard reads them
           const pending = []
           if (aiResult) pending.push({ title: aiResult.title ?? task.slice(0, 80), description: task, intentType: aiResult.intentType, entryType: aiResult.entryType ?? 'on_demand', category: aiResult.category, city, budgetMin: aiResult.budgetMin, budgetMax: aiResult.budgetMax })
-          if (secondAiResult) { const t2 = msgs.find(m => m.card?.cardIndex === 1)?.card?.title ?? secondAiResult.title ?? ''; pending.push({ title: secondAiResult.title ?? t2.slice(0, 80), description: t2, intentType: secondAiResult.intentType, entryType: secondAiResult.entryType ?? 'on_demand', category: secondAiResult.category, city, budgetMin: secondAiResult.budgetMin, budgetMax: secondAiResult.budgetMax }) }
+          if (secondAiResult) { const t2 = msgs.find(m => m.cardIndex === 1)?.card?.title ?? secondAiResult.title ?? ''; pending.push({ title: secondAiResult.title ?? t2.slice(0, 80), description: t2, intentType: secondAiResult.intentType, entryType: secondAiResult.entryType ?? 'on_demand', category: secondAiResult.category, city, budgetMin: secondAiResult.budgetMin, budgetMax: secondAiResult.budgetMax }) }
           if (pending.length > 0) localStorage.setItem('otaska_pending_entries', JSON.stringify(pending))
 
           await signIn('password', { email: updatedForm.email, password: updatedForm.password, name: updatedForm.name, flow: 'signUp' })
@@ -352,18 +349,54 @@ export function Landing() {
             <button onClick={() => setStep(1)} style={S.back}><BackArrow /> Назад</button>
 
             {msgs.map((m, i) => m.card ? (
-              <div key={i} style={{ background: '#fff', border: '2px solid #EF9F27', borderRadius: 16, padding: '12px 16px', marginBottom: 10, boxShadow: '0 4px 20px rgba(239,159,39,.12)' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, color: '#B4924A', textTransform: 'uppercase', marginBottom: 6 }}>
-                  Ціль{secondAiResult ? ` ${(m.cardIndex ?? 0) + 1}` : ''}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 20 }}>{m.card.emoji}</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: '#1A1612' }}>{m.card.title}</div>
-                    <div style={{ fontSize: 12, color: '#9A8060' }}>{m.card.details}</div>
+              <div key={i}>
+                <div style={{ background: '#fff', border: '2px solid #EF9F27', borderRadius: 16, padding: '12px 16px', marginBottom: 8, boxShadow: '0 4px 20px rgba(239,159,39,.12)' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, color: '#B4924A', textTransform: 'uppercase', marginBottom: 6 }}>
+                    Ціль{secondAiResult ? ` ${(m.cardIndex ?? 0) + 1}` : ''}
                   </div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: '#EF9F27', whiteSpace: 'nowrap' }}>€{m.card.budgetMin}–{m.card.budgetMax}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                    <span style={{ fontSize: 20 }}>{m.card.emoji}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: '#1A1612' }}>{m.card.title}</div>
+                      <div style={{ fontSize: 12, color: '#9A8060' }}>{m.card.details}</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const }}>
+                    <select
+                      value={m.card.category}
+                      onChange={e => updateCardField((m.cardIndex ?? 0) as 0 | 1, 'category', e.target.value)}
+                      style={{ padding: '5px 10px', borderRadius: 99, border: 'none', background: '#FAEEDA', color: '#854F0B', fontSize: 12, fontWeight: 600, fontFamily: 'system-ui', cursor: 'pointer' }}
+                    >
+                      {[...CATEGORIES.filter(c => c !== 'Всі'), m.card.category].filter((c, idx, arr) => arr.indexOf(c) === idx).map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 'auto' }}>
+                      <span style={{ fontSize: 13, color: '#9A8060' }}>€</span>
+                      <input type="number" value={m.card.budgetMin}
+                        onChange={e => updateCardField((m.cardIndex ?? 0) as 0 | 1, 'budgetMin', e.target.value)}
+                        style={{ width: 52, padding: '4px 6px', borderRadius: 8, border: '1.5px solid #EDE8DF', fontSize: 13, fontWeight: 700, color: '#BA7517', fontFamily: 'inherit', textAlign: 'right' as const }} />
+                      <span style={{ fontSize: 13, color: '#9A8060' }}>–</span>
+                      <input type="number" value={m.card.budgetMax}
+                        onChange={e => updateCardField((m.cardIndex ?? 0) as 0 | 1, 'budgetMax', e.target.value)}
+                        style={{ width: 52, padding: '4px 6px', borderRadius: 8, border: '1.5px solid #EDE8DF', fontSize: 13, fontWeight: 700, color: '#BA7517', fontFamily: 'inherit', textAlign: 'right' as const }} />
+                    </div>
+                  </div>
                 </div>
+
+                {/* Action buttons — only under the latest first-goal card, before reg starts */}
+                {(m.cardIndex ?? 0) === 0 && i === msgs.length - 1 && !secondAiResult && !regMode && !secondGoalMode && (
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                    <button onClick={handleAddSecondGoal}
+                      style={{ flex: 1, padding: '10px', borderRadius: 12, border: '1.5px solid #EDE8DF', background: '#fff', color: '#5A4A2E', fontSize: 13, fontWeight: 600, fontFamily: 'system-ui', cursor: 'pointer' }}>
+                      + Додати ще одну ціль
+                    </button>
+                    <button onClick={startRegFields}
+                      style={{ flex: 1.4, padding: '10px', borderRadius: 12, border: 'none', background: '#1A1612', color: '#fff', fontSize: 13, fontWeight: 700, fontFamily: 'system-ui', cursor: 'pointer' }}>
+                      Опублікувати →
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start', marginBottom: 12 }}>
@@ -405,7 +438,7 @@ export function Landing() {
           </div>
 
           {/* Input area */}
-          {(!aiResult || regMode || askGoalStep || secondGoalMode) && (
+          {(!aiResult || regMode || secondGoalMode) && (
             <div style={{ padding: '12px 16px 20px', background: '#F5F4F1', borderTop: '1px solid #EDE8DF' }}>
               {!regMode && chips.length > 0 && (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const, marginBottom: 10 }}>

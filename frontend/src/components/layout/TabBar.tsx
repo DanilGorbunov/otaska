@@ -63,6 +63,8 @@ export function TabBar() {
   const location = useLocation()
   const unread = useQuery(api.messages.unreadCount) ?? 0
   const prevUnread = useRef(unread)
+  const matchCount = useQuery(api.entries.myMatchCount) ?? 0
+  const prevMatchCount = useRef(matchCount)
 
   useEffect(() => {
     if (unread > prevUnread.current && !location.pathname.startsWith('/app/chat/')) {
@@ -70,6 +72,13 @@ export function TabBar() {
     }
     prevUnread.current = unread
   }, [unread, location.pathname])
+
+  useEffect(() => {
+    if (matchCount > prevMatchCount.current && location.pathname !== '/app') {
+      playPop()
+    }
+    prevMatchCount.current = matchCount
+  }, [matchCount, location.pathname])
 
   const openNew = () => {
     navigate('/app/new', { state: { backgroundLocation: location } })
@@ -103,12 +112,13 @@ export function TabBar() {
         }
         const active = location.pathname === tab.path || location.pathname.startsWith(tab.path + '/')
         const isChat = tab.path === '/app/chat'
+        const isEntries = tab.path === '/app'
         return (
           <div key={tab.path} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, cursor: 'pointer', paddingTop: 6, position: 'relative' }}
             onClick={() => navigate(tab.path)}>
             <div style={{ position: 'relative', display: 'inline-flex' }}>
               {tab.icon(active)}
-              {isChat && unread > 0 && !active && (
+              {((isChat && unread > 0) || (isEntries && matchCount > 0)) && !active && (
                 <div style={{
                   position: 'absolute', top: 0, right: -2,
                   width: 8, height: 8, borderRadius: '50%',

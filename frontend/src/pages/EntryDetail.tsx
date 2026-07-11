@@ -4,6 +4,7 @@ import { useQuery, useMutation, useAction } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
 import { ProjectTaskAdder } from '../components/ProjectTaskAdder'
+import { ProjectMap } from '../components/projects/ProjectMap'
 
 // ── Mini AI publish chat ──────────────────────────────────────────────────────
 type AIMsg = { role: 'user' | 'assistant'; content: string }
@@ -84,6 +85,8 @@ export function EntryDetail() {
   const callAI = useAction(api.ai.chat)
   const findMatches = useAction(api.ai.findMatches)
   const dismissMatch = useMutation(api.entries.dismissAiMatch)
+  const sequenceProjectTasks = useAction(api.ai.sequenceProjectTasks)
+  const [sequencing, setSequencing] = useState(false)
 
   const isOwn = me?._id != null && entry?.clientId === me._id
 
@@ -186,6 +189,17 @@ export function EntryDetail() {
   )
 
   const isProject = entry.entryType === 'project'
+
+  const handleSequence = async () => {
+    setSequencing(true)
+    try {
+      await sequenceProjectTasks({ projectId: entry._id })
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setSequencing(false)
+    }
+  }
   const statusColor = entry.status === 'open' ? '#22C55E' : entry.status === 'draft' ? '#B4A898' : '#EF9F27'
   const statusLabel = entry.status === 'open' ? 'Активно' : entry.status === 'draft' ? 'Чернетка' : entry.status === 'done' ? 'Виконано' : entry.status ?? ''
 
@@ -379,6 +393,15 @@ export function EntryDetail() {
         {/* ── PROJECT: Task list ── */}
         {isProject && (
           <>
+            <ProjectMap tasks={tasks} />
+
+            {tasks.length >= 2 && (
+              <button onClick={handleSequence} disabled={sequencing}
+                style={{ width: '100%', padding: 12, borderRadius: 14, border: '1.5px solid #EDE8DF', background: '#fff', cursor: sequencing ? 'default' : 'pointer', fontSize: 13, fontWeight: 600, color: '#1A1612', fontFamily: 'inherit', marginBottom: 16 }}>
+                {sequencing ? '✦ Оптимізуємо...' : '✦ Оптимізувати послідовність'}
+              </button>
+            )}
+
             {/* AI + Manual task adder */}
             <div style={{ marginBottom: 16 }}>
               <ProjectTaskAdder
@@ -473,7 +496,15 @@ export function EntryDetail() {
               return (
                 <div key={p._id} style={{ background: '#fff', borderRadius: 14, padding: '14px', border: '1.5px solid #EDE8DF', marginBottom: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#1A1612' }}>{p.providerName}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#1A1612' }}>{p.providerName}</div>
+                      {p.providerVerified && (
+                        <span title="Верифікований" style={{
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          width: 15, height: 15, borderRadius: '50%', background: '#EF9F27', color: '#fff', fontSize: 9, fontWeight: 900, flexShrink: 0,
+                        }}>✓</span>
+                      )}
+                    </div>
                     <div style={{ fontSize: 12, fontWeight: 600, color: statusColor[p.status] }}>{statusLabel[p.status]}</div>
                   </div>
                   {p.price && <div style={{ fontSize: 16, fontWeight: 800, color: '#EF9F27', marginBottom: 4 }}>€{p.price}</div>}

@@ -3,33 +3,31 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { BellButton } from '../components/layout/NavBar'
-
-const CATEGORIES = ['Всі', 'Електрика', 'Сантехніка', 'Ремонт', 'Фарбування', 'Плитка', 'Теслярство', 'Матеріали', 'Переїзд', 'Інше']
-
-const INTENT_LABEL: Record<string, { label: string; color: string; bg: string }> = {
-  seeking_service:  { label: 'Шукає виконавця', color: '#5A3E22', bg: 'rgba(239,159,39,.14)' },
-  offering_service: { label: 'Пропонує послугу', color: '#2D5A27', bg: 'rgba(34,197,94,.13)' },
-  seeking_job:      { label: 'Шукає роботу',     color: '#4A3060', bg: 'rgba(139,92,246,.12)' },
-  seeking_material: { label: 'Шукає матеріали',  color: '#5A4A2E', bg: 'rgba(154,128,96,.15)' },
-}
+import { CATEGORIES, CATEGORY_GROUPS, INTENT_TYPES, INTENT_LABEL } from '../lib/categories'
 
 export function Browse() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('Всі')
+  const [intentType, setIntentType] = useState<string | null>(null)
+  const [city, setCity] = useState('')
+  const [showMoreFilters, setShowMoreFilters] = useState(false)
 
-  const allOpen = useQuery(api.entries.listOpen, {}) ?? null
+  const allOpen = useQuery(api.entries.listOpen, {
+    category: category === 'Всі' ? undefined : category,
+    intentType: intentType ?? undefined,
+    city: city.trim() || undefined,
+  }) ?? null
 
   const entries = useMemo(() => {
     if (!allOpen) return null
     return allOpen.filter(e => {
       if (e.entryType === 'project') return false
-      const matchCat = category === 'Всі' || e.category === category
       const matchSearch = !search || e.title.toLowerCase().includes(search.toLowerCase()) ||
         (e.description ?? '').toLowerCase().includes(search.toLowerCase())
-      return matchCat && matchSearch
+      return matchSearch
     })
-  }, [allOpen, search, category])
+  }, [allOpen, search])
 
   return (
     <div style={{ background: '#F2F2F7', minHeight: '100dvh' }}>
@@ -66,7 +64,7 @@ export function Browse() {
         </div>
 
         {/* Category pills */}
-        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 14, scrollbarWidth: 'none' }}>
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 10, scrollbarWidth: 'none' }}>
           {CATEGORIES.map(cat => (
             <button key={cat} onClick={() => setCategory(cat)} style={{
               padding: '7px 16px', borderRadius: 99, border: 'none', cursor: 'pointer', flexShrink: 0,
@@ -80,6 +78,72 @@ export function Browse() {
             </button>
           ))}
         </div>
+
+        {/* More filters toggle */}
+        <button onClick={() => setShowMoreFilters(v => !v)} style={{
+          display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer',
+          padding: '2px 0 10px', fontSize: 13, fontWeight: 600, color: intentType || city ? '#1A1612' : '#9A8060', fontFamily: 'inherit',
+        }}>
+          Фільтри{(intentType || city) ? ' •' : ''} {showMoreFilters ? '▲' : '▼'}
+        </button>
+
+        {showMoreFilters && (
+          <div style={{ paddingBottom: 14 }}>
+            {/* Intent type pills */}
+            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 10, scrollbarWidth: 'none' }}>
+              <button onClick={() => setIntentType(null)} style={{
+                padding: '6px 14px', borderRadius: 99, border: 'none', cursor: 'pointer', flexShrink: 0,
+                background: intentType === null ? '#1A1612' : '#fff',
+                color: intentType === null ? '#fff' : '#9A8060',
+                fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
+                boxShadow: intentType === null ? '0 2px 8px rgba(0,0,0,.2)' : '0 1px 4px rgba(0,0,0,.07)',
+              }}>
+                Всі типи
+              </button>
+              {INTENT_TYPES.map(it => (
+                <button key={it} onClick={() => setIntentType(it)} style={{
+                  padding: '6px 14px', borderRadius: 99, border: 'none', cursor: 'pointer', flexShrink: 0,
+                  background: intentType === it ? '#1A1612' : '#fff',
+                  color: intentType === it ? '#fff' : '#9A8060',
+                  fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
+                  boxShadow: intentType === it ? '0 2px 8px rgba(0,0,0,.2)' : '0 1px 4px rgba(0,0,0,.07)',
+                }}>
+                  {INTENT_LABEL[it]?.label ?? it}
+                </button>
+              ))}
+            </div>
+
+            {/* City input */}
+            <input value={city} onChange={e => setCity(e.target.value)}
+              placeholder="Місто..."
+              style={{
+                width: '100%', padding: '9px 14px', borderRadius: 12, border: '1.5px solid #EDE8DF',
+                fontSize: 14, color: '#1A1612', outline: 'none',
+                background: '#fff', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 12,
+              }}
+            />
+
+            {/* Extended category taxonomy, grouped by vertical — not just construction */}
+            {CATEGORY_GROUPS.map(g => (
+              <div key={g.group} style={{ marginBottom: 8 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#B4A898', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>{g.label}</div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {g.categories.map(cat => (
+                    <button key={cat} onClick={() => setCategory(cat)} style={{
+                      padding: '5px 12px', borderRadius: 99, border: 'none', cursor: 'pointer',
+                      background: category === cat ? '#1A1612' : '#fff',
+                      color: category === cat ? '#fff' : '#9A8060',
+                      fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
+                      boxShadow: category === cat ? '0 2px 8px rgba(0,0,0,.2)' : '0 1px 4px rgba(0,0,0,.07)',
+                    }}>
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {entries === null ? (

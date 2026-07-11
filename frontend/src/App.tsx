@@ -5,7 +5,6 @@ import { Dashboard } from './pages/Dashboard'
 import { Browse } from './pages/Browse'
 import { NewEntry } from './pages/NewEntry'
 import { EntryDetail } from './pages/EntryDetail'
-import { ProjectDetail } from './pages/ProjectDetail'
 import { Chat } from './pages/Chat'
 import { Profile } from './pages/Profile'
 import { ProviderProfile } from './pages/ProviderProfile'
@@ -43,7 +42,6 @@ function RouterContent() {
           <Route index element={<Dashboard />} />
           <Route path="browse" element={<Browse />} />
           <Route path="entries/:id" element={<EntryDetail />} />
-          <Route path="projects/:id" element={<ProjectDetail />} />
           <Route path="chat" element={<Chat />} />
           <Route path="profile" element={<Profile />} />
           <Route path="users/:id" element={<ProviderProfile />} />

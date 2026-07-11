@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
-import { MOCK_CONVERSATIONS } from '../../lib/mockData'
+import { useQuery } from 'convex/react'
+import { api } from '../../../convex/_generated/api'
 
 interface NavBarProps {
   title: string
@@ -11,7 +12,7 @@ interface NavBarProps {
 
 export function BellButton() {
   const navigate = useNavigate()
-  const unread = MOCK_CONVERSATIONS.reduce((s, c) => s + c.unread, 0)
+  const unread = useQuery(api.messages.unreadCount, {}) ?? 0
   return (
     <button onClick={() => navigate('/app/chat')} style={{
       background: 'none', border: 'none', cursor: 'pointer',

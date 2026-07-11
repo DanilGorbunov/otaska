@@ -84,7 +84,7 @@ export function ProviderProfile() {
           </svg>
         </button>
 
-        {/* Verified badge top-right */}
+        {/* Role badge top-right */}
         {profile?.isProvider && (
           <div style={{
             position: 'absolute', top: 16, right: 16,
@@ -92,7 +92,7 @@ export function ProviderProfile() {
             borderRadius: 20, padding: '5px 12px',
             fontSize: 12, fontWeight: 700, color: '#EF9F27',
           }}>
-            ✓ Майстер
+            {profile?.verified ? '✓ ' : ''}Майстер
           </div>
         )}
       </div>
@@ -118,32 +118,43 @@ export function ProviderProfile() {
 
         {/* Name + bio + stats in one card */}
         <div style={{ background: '#fff', borderRadius: 18, padding: '18px', marginBottom: 12, boxShadow: '0 2px 12px rgba(0,0,0,.06)', border: '1.5px solid #EDE8DF' }}>
-          <div style={{ fontSize: 22, fontWeight: 800, color: '#1A1612', letterSpacing: '-.4px', marginBottom: 4 }}>{name}</div>
-
-          {profile?.bio ? (
-            <p style={{ fontSize: 14, color: '#5A4A2E', lineHeight: 1.65, margin: '0 0 10px' }}>{profile.bio}</p>
-          ) : (
-            <p style={{ fontSize: 14, color: '#C0B49A', lineHeight: 1.65, margin: '0 0 10px', fontStyle: 'italic' }}>Немає опису</p>
-          )}
-
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
-            {profile?.city && <span style={{ fontSize: 13, color: '#9A8060' }}>📍 {profile.city}</span>}
-            {profile?.category && <span style={{ fontSize: 13, color: '#9A8060' }}>🔧 {profile.category}</span>}
-            {profile?.availability && <span style={{ fontSize: 13, color: '#9A8060' }}>🕐 {profile.availability}</span>}
-          </div>
-
-          <div style={{ height: 1, background: '#F0EBE3', marginBottom: 14 }} />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)' }}>
-            {[
-              { val: rating > 0 ? rating.toFixed(1) : '—', label: 'Рейтинг' },
-              { val: String(jobs), label: 'Замовлень' },
-              { val: profile?.priceFrom && profile?.priceTo ? `€${profile.priceFrom}–${profile.priceTo}` : profile?.hourlyRate ? `€${profile.hourlyRate}/год` : '—', label: 'Ціна' },
-            ].map((s, i) => (
-              <div key={i} style={{ textAlign: 'center', padding: '4px 0', borderRight: i < 2 ? '1px solid #F0EBE3' : 'none' }}>
-                <div style={{ fontSize: 11, color: '#9A8060', marginBottom: 3 }}>{s.label}</div>
-                <div style={{ fontSize: 17, fontWeight: 800, color: '#1A1612' }}>{s.val}</div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+            {/* Left: name + bio */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#1A1612', letterSpacing: '-.4px' }}>{name}</div>
+                {profile?.verified && (
+                  <span title="Верифікований" style={{
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    width: 18, height: 18, borderRadius: '50%', background: '#EF9F27', color: '#fff', fontSize: 11, fontWeight: 900, flexShrink: 0,
+                  }}>✓</span>
+                )}
               </div>
-            ))}
+              {profile?.bio ? (
+                <p style={{ fontSize: 13, color: '#5A4A2E', lineHeight: 1.6, margin: '0 0 8px' }}>{profile.bio}</p>
+              ) : (
+                <p style={{ fontSize: 13, color: '#C0B49A', fontStyle: 'italic', margin: '0 0 8px' }}>Немає опису</p>
+              )}
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                {profile?.city && <span style={{ fontSize: 12, color: '#9A8060' }}>📍 {profile.city}</span>}
+                {profile?.category && <span style={{ fontSize: 12, color: '#9A8060' }}>🔧 {profile.category}</span>}
+                {profile?.availability && <span style={{ fontSize: 12, color: '#9A8060' }}>🕐 {profile.availability}</span>}
+              </div>
+            </div>
+
+            {/* Right: stats */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0, borderLeft: '1px solid #F0EBE3', paddingLeft: 14 }}>
+              {[
+                { val: rating > 0 ? rating.toFixed(1) : '—', label: 'Рейтинг' },
+                { val: String(jobs), label: 'Замовлень' },
+                { val: profile?.priceFrom && profile?.priceTo ? `€${profile.priceFrom}–${profile.priceTo}` : profile?.hourlyRate ? `€${profile.hourlyRate}/год` : '—', label: 'Ціна' },
+              ].map((s, i) => (
+                <div key={i} style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: '#1A1612', lineHeight: 1 }}>{s.val}</div>
+                  <div style={{ fontSize: 10, color: '#9A8060', marginTop: 2 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
