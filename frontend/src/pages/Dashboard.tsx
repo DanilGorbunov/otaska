@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api'
@@ -17,6 +18,7 @@ export function Dashboard() {
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<Id<'entries'>>>(new Set())
   const [bulkBusy, setBulkBusy] = useState(false)
+  const [showDone, setShowDone] = useState(false)
 
   // After registration: pending entries were saved to localStorage before signIn.
   // Now auth is ready — create them on first Dashboard mount.
@@ -48,6 +50,8 @@ export function Dashboard() {
   const done = entries.filter(e => e.status === 'done').length
   const filteredEntries = entries.filter(e => (e.title ?? '').toLowerCase().includes(search.toLowerCase()))
   const filteredProjects = projects.filter(e => (e.title ?? '').toLowerCase().includes(search.toLowerCase()))
+  const activeFilteredEntries = filteredEntries.filter(e => e.status !== 'done')
+  const doneFilteredEntries = filteredEntries.filter(e => e.status === 'done')
 
   const toggleSelected = (id: Id<'entries'>) => {
     setSelectedIds(prev => {
@@ -154,65 +158,41 @@ export function Dashboard() {
                   </button>
                 )}
               </div>
+              {selectMode && selectedIds.size > 0 && (
+                <div style={{ marginBottom: 10 }}>
+                  <BulkActionsBar count={selectedIds.size} busy={bulkBusy} onDone={handleBulkDone} onDelete={handleBulkDelete} />
+                </div>
+              )}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {filteredEntries.map(e => {
-                  const hasAi = e.aiMatchCount != null
-                  const count = e.aiMatchCount ?? 0
-                  const first = hasAi && e.aiMatchFirstId
-                    ? { _id: e.aiMatchFirstId, title: e.aiMatchFirstTitle ?? '', city: e.aiMatchFirstCity }
-                    : undefined
-                  const selected = selectedIds.has(e._id)
-                  return (
-                    <div key={e._id}
-                      onClick={() => selectMode ? toggleSelected(e._id) : navigate(`/app/entries/${e._id}`)}
-                      style={{ background: '#fff', borderRadius: 16, border: selected ? '1.5px solid #EF9F27' : '1.5px solid #EDE8DF', cursor: 'pointer', overflow: 'hidden' }}>
-                      <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                        {selectMode && (
-                          <div style={{
-                            width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
-                            border: selected ? 'none' : '1.5px solid #C0B49A',
-                            background: selected ? '#EF9F27' : 'transparent',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          }}>
-                            {selected && (
-                              <svg width="11" height="9" viewBox="0 0 12 10" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M1 5l3.5 3.5L11 1" />
-                              </svg>
-                            )}
-                          </div>
-                        )}
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: '#1A1612', marginBottom: 2 }}>{e.title}</div>
-                          <div style={{ fontSize: 12, color: '#9A8060' }}>
-                            {e.category}{e.city ? ` · ${e.city}` : ''}{e.budgetMin && e.budgetMax ? ` · €${e.budgetMin}–${e.budgetMax}` : ''}
-                          </div>
-                        </div>
-                        {selectMode ? null : !hasAi
-                          ? <span style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
-                              {[0,1,2].map(i => <span key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: '#C0B49A', display: 'inline-block', animation: `dotPulse 1.4s ease-in-out ${i * 0.2}s infinite` }} />)}
-                            </span>
-                          : count > 0
-                            ? <span style={{ fontSize: 12, fontWeight: 700, color: '#EF9F27', background: 'rgba(239,159,39,.12)', padding: '3px 8px', borderRadius: 20, flexShrink: 0 }}>
-                                {count}
-                              </span>
-                            : <span style={{ fontSize: 11, color: '#B4A898', flexShrink: 0 }}>0 збігів</span>
-                        }
-                      </div>
-                      {first && (
-                        <div onClick={ev => { ev.stopPropagation(); selectMode ? toggleSelected(e._id) : navigate(`/app/entries/${first._id}`) }}
-                          style={{ borderTop: '1px solid #FDE68A', background: 'rgba(239,159,39,.06)', padding: '9px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF9F27', flexShrink: 0 }} />
-                          <span style={{ fontSize: 12, fontWeight: 600, color: '#5A4A2E', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {first.title}
-                          </span>
-                          {first.city && <span style={{ fontSize: 11, color: '#9A8060', flexShrink: 0 }}>📍 {first.city}</span>}
-                          <svg width="5" height="9" viewBox="0 0 7 13" fill="none" stroke="#EF9F27" strokeWidth="2.5" strokeLinecap="round"><path d="M1 1.5l5 5-5 5"/></svg>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
+                {activeFilteredEntries.map(e => (
+                  <EntryCard key={e._id} entry={e} selectMode={selectMode} selected={selectedIds.has(e._id)}
+                    onToggle={() => toggleSelected(e._id)} onOpen={() => navigate(`/app/entries/${e._id}`)}
+                    onOpenFirst={id => navigate(`/app/entries/${id}`)} />
+                ))}
               </div>
+
+              {doneFilteredEntries.length > 0 && (
+                <div style={{ marginTop: 16 }}>
+                  <button onClick={() => setShowDone(s => !s)}
+                    style={{ width: '100%', background: 'none', border: 'none', padding: '4px 0', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="#9A8060" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                      style={{ transform: showDone ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform .15s', flexShrink: 0 }}>
+                      <path d="M2 1l4 5-4 5" />
+                    </svg>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1 }}>
+                      Виконані ({doneFilteredEntries.length})
+                    </span>
+                  </button>
+                  {showDone && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+                      {doneFilteredEntries.map(e => (
+                        <EntryCard key={e._id} entry={e} selectMode={selectMode} selected={selectedIds.has(e._id)}
+                          onToggle={() => toggleSelected(e._id)} onOpen={() => navigate(`/app/entries/${e._id}`)} muted />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -250,25 +230,113 @@ export function Dashboard() {
         </div>
       )}
 
-      {/* Bulk actions bar */}
-      {selectMode && selectedIds.size > 0 && (
-        <div style={{
-          position: 'fixed', bottom: 60, left: '50%', transform: 'translateX(-50%)',
-          width: '100%', maxWidth: 430, zIndex: 51, boxSizing: 'border-box',
-          background: '#1A1612', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10,
-        }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#fff', flex: 1 }}>{selectedIds.size} обрано</span>
-          <button disabled={bulkBusy} onClick={handleBulkDone}
-            style={{ padding: '9px 14px', borderRadius: 10, border: 'none', background: '#22C55E', color: '#0A2313', fontSize: 13, fontWeight: 700, cursor: bulkBusy ? 'default' : 'pointer', fontFamily: 'inherit', opacity: bulkBusy ? 0.6 : 1 }}>
-            ✓ Виконано
-          </button>
-          <button disabled={bulkBusy} onClick={handleBulkDelete}
-            style={{ padding: '9px 14px', borderRadius: 10, border: 'none', background: '#DC2626', color: '#fff', fontSize: 13, fontWeight: 700, cursor: bulkBusy ? 'default' : 'pointer', fontFamily: 'inherit', opacity: bulkBusy ? 0.6 : 1 }}>
-            🗑 Видалити
-          </button>
-        </div>
+      {/* Bulk actions bar — portaled to body so it's always pinned to the real viewport,
+          not to an ancestor that establishes a containing block via will-change/transform */}
+      {selectMode && selectedIds.size > 0 && createPortal(
+        <div style={{ position: 'fixed', bottom: 60, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 430, zIndex: 51, padding: '0 16px', boxSizing: 'border-box' }}>
+          <BulkActionsBar count={selectedIds.size} busy={bulkBusy} onDone={handleBulkDone} onDelete={handleBulkDelete} />
+        </div>,
+        document.body
       )}
       <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} } @keyframes dotPulse { 0%,80%,100%{transform:scale(.6);opacity:.4} 40%{transform:scale(1);opacity:1} }`}</style>
+    </div>
+  )
+}
+
+function BulkActionsBar({ count, busy, onDone, onDelete }: { count: number; busy: boolean; onDone: () => void; onDelete: () => void }) {
+  return (
+    <div style={{ background: '#1A1612', borderRadius: 14, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, boxSizing: 'border-box' }}>
+      <span style={{ fontSize: 13, fontWeight: 600, color: '#fff', flex: 1 }}>{count} обрано</span>
+      <button disabled={busy} onClick={onDone}
+        style={{ padding: '9px 14px', borderRadius: 10, border: 'none', background: '#22C55E', color: '#0A2313', fontSize: 13, fontWeight: 700, cursor: busy ? 'default' : 'pointer', fontFamily: 'inherit', opacity: busy ? 0.6 : 1 }}>
+        ✓ Виконано
+      </button>
+      <button disabled={busy} onClick={onDelete}
+        style={{ padding: '9px 14px', borderRadius: 10, border: 'none', background: '#DC2626', color: '#fff', fontSize: 13, fontWeight: 700, cursor: busy ? 'default' : 'pointer', fontFamily: 'inherit', opacity: busy ? 0.6 : 1 }}>
+        🗑 Видалити
+      </button>
+    </div>
+  )
+}
+
+interface EntryCardData {
+  _id: Id<'entries'>
+  title?: string
+  category?: string
+  city?: string
+  budgetMin?: number
+  budgetMax?: number
+  aiMatchCount?: number
+  aiMatchFirstId?: string
+  aiMatchFirstTitle?: string
+  aiMatchFirstCity?: string
+}
+
+function EntryCard({ entry: e, selectMode, selected, onToggle, onOpen, onOpenFirst, muted }: {
+  entry: EntryCardData; selectMode: boolean; selected: boolean; onToggle: () => void; onOpen: () => void
+  onOpenFirst?: (id: string) => void; muted?: boolean
+}) {
+  const hasAi = e.aiMatchCount != null
+  const count = e.aiMatchCount ?? 0
+  const first = !muted && hasAi && e.aiMatchFirstId
+    ? { _id: e.aiMatchFirstId, title: e.aiMatchFirstTitle ?? '', city: e.aiMatchFirstCity }
+    : undefined
+
+  return (
+    <div onClick={() => selectMode ? onToggle() : onOpen()}
+      style={{
+        background: muted ? '#FAF8F4' : '#fff', borderRadius: 16, cursor: 'pointer', overflow: 'hidden',
+        border: selected ? '1.5px solid #EF9F27' : muted ? '1.5px solid #EFE9DD' : '1.5px solid #EDE8DF',
+      }}>
+      <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+        {selectMode && (
+          <div style={{
+            width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+            border: selected ? 'none' : '1.5px solid #C0B49A',
+            background: selected ? '#EF9F27' : 'transparent',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            {selected && (
+              <svg width="11" height="9" viewBox="0 0 12 10" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M1 5l3.5 3.5L11 1" />
+              </svg>
+            )}
+          </div>
+        )}
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: muted ? '#9A8060' : '#1A1612', marginBottom: 2, textDecoration: muted ? 'line-through' : 'none' }}>
+            {e.title}
+          </div>
+          <div style={{ fontSize: 12, color: '#B4A898' }}>
+            {e.category}{e.city ? ` · ${e.city}` : ''}{e.budgetMin && e.budgetMax ? ` · €${e.budgetMin}–${e.budgetMax}` : ''}
+          </div>
+        </div>
+        {selectMode ? null : muted
+          ? <span style={{ fontSize: 11, fontWeight: 700, color: '#22C55E', background: 'rgba(34,197,94,.12)', padding: '3px 8px', borderRadius: 20, flexShrink: 0 }}>
+              ✓ Виконано
+            </span>
+          : !hasAi
+            ? <span style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
+                {[0,1,2].map(i => <span key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: '#C0B49A', display: 'inline-block', animation: `dotPulse 1.4s ease-in-out ${i * 0.2}s infinite` }} />)}
+              </span>
+            : count > 0
+              ? <span style={{ fontSize: 12, fontWeight: 700, color: '#EF9F27', background: 'rgba(239,159,39,.12)', padding: '3px 8px', borderRadius: 20, flexShrink: 0 }}>
+                  {count}
+                </span>
+              : <span style={{ fontSize: 11, color: '#B4A898', flexShrink: 0 }}>0 збігів</span>
+        }
+      </div>
+      {first && (
+        <div onClick={ev => { ev.stopPropagation(); selectMode ? onToggle() : onOpenFirst?.(first._id) }}
+          style={{ borderTop: '1px solid #FDE68A', background: 'rgba(239,159,39,.06)', padding: '9px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF9F27', flexShrink: 0 }} />
+          <span style={{ fontSize: 12, fontWeight: 600, color: '#5A4A2E', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {first.title}
+          </span>
+          {first.city && <span style={{ fontSize: 11, color: '#9A8060', flexShrink: 0 }}>📍 {first.city}</span>}
+          <svg width="5" height="9" viewBox="0 0 7 13" fill="none" stroke="#EF9F27" strokeWidth="2.5" strokeLinecap="round"><path d="M1 1.5l5 5-5 5"/></svg>
+        </div>
+      )}
     </div>
   )
 }
