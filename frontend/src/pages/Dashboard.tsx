@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { createPortal } from 'react-dom'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api'
@@ -149,20 +148,28 @@ export function Dashboard() {
         <div style={{ padding: '0 16px 100px', display: 'flex', flexDirection: 'column', gap: 20 }}>
           {filteredEntries.length > 0 && (
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1 }}>Записи</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1, flexShrink: 0 }}>Записи</div>
                 {selectMode && (
-                  <button onClick={toggleSelectAll}
-                    style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 700, color: '#EF9F27', cursor: 'pointer', fontFamily: 'inherit' }}>
-                    {allSelected ? 'Скасувати всі' : 'Вибрати всі'}
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {selectedIds.size > 0 && (
+                      <>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: '#9A8060' }}>{selectedIds.size} обрано</span>
+                        <IconButton disabled={bulkBusy} onClick={handleBulkDone} title="Позначити виконаним" color="#22C55E">
+                          <path d="M1 5l3.5 3.5L11 1" />
+                        </IconButton>
+                        <IconButton disabled={bulkBusy} onClick={handleBulkDelete} title="Видалити" color="#DC2626">
+                          <path d="M2 3.5h10M6 3.5v-1a1 1 0 011-1h2a1 1 0 011 1v1m2 0l-.7 8.4a1 1 0 01-1 .9H5.7a1 1 0 01-1-.9L4 3.5" />
+                        </IconButton>
+                      </>
+                    )}
+                    <button onClick={toggleSelectAll}
+                      style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 700, color: '#EF9F27', cursor: 'pointer', fontFamily: 'inherit' }}>
+                      {allSelected ? 'Скасувати всі' : 'Вибрати всі'}
+                    </button>
+                  </div>
                 )}
               </div>
-              {selectMode && selectedIds.size > 0 && (
-                <div style={{ marginBottom: 10 }}>
-                  <BulkActionsBar count={selectedIds.size} busy={bulkBusy} onDone={handleBulkDone} onDelete={handleBulkDelete} />
-                </div>
-              )}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {activeFilteredEntries.map(e => (
                   <EntryCard key={e._id} entry={e} selectMode={selectMode} selected={selectedIds.has(e._id)}
@@ -230,32 +237,26 @@ export function Dashboard() {
         </div>
       )}
 
-      {/* Bulk actions bar — portaled to body so it's always pinned to the real viewport,
-          not to an ancestor that establishes a containing block via will-change/transform */}
-      {selectMode && selectedIds.size > 0 && createPortal(
-        <div style={{ position: 'fixed', bottom: 60, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 430, zIndex: 51, padding: '0 16px', boxSizing: 'border-box' }}>
-          <BulkActionsBar count={selectedIds.size} busy={bulkBusy} onDone={handleBulkDone} onDelete={handleBulkDelete} />
-        </div>,
-        document.body
-      )}
       <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} } @keyframes dotPulse { 0%,80%,100%{transform:scale(.6);opacity:.4} 40%{transform:scale(1);opacity:1} }`}</style>
     </div>
   )
 }
 
-function BulkActionsBar({ count, busy, onDone, onDelete }: { count: number; busy: boolean; onDone: () => void; onDelete: () => void }) {
+function IconButton({ onClick, disabled, title, color, children }: {
+  onClick: () => void; disabled?: boolean; title: string; color: string; children: React.ReactNode
+}) {
   return (
-    <div style={{ background: '#1A1612', borderRadius: 14, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, boxSizing: 'border-box' }}>
-      <span style={{ fontSize: 13, fontWeight: 600, color: '#fff', flex: 1 }}>{count} обрано</span>
-      <button disabled={busy} onClick={onDone}
-        style={{ padding: '9px 14px', borderRadius: 10, border: 'none', background: '#22C55E', color: '#0A2313', fontSize: 13, fontWeight: 700, cursor: busy ? 'default' : 'pointer', fontFamily: 'inherit', opacity: busy ? 0.6 : 1 }}>
-        ✓ Виконано
-      </button>
-      <button disabled={busy} onClick={onDelete}
-        style={{ padding: '9px 14px', borderRadius: 10, border: 'none', background: '#DC2626', color: '#fff', fontSize: 13, fontWeight: 700, cursor: busy ? 'default' : 'pointer', fontFamily: 'inherit', opacity: busy ? 0.6 : 1 }}>
-        🗑 Видалити
-      </button>
-    </div>
+    <button onClick={onClick} disabled={disabled} title={title}
+      style={{
+        width: 26, height: 26, borderRadius: '50%', flexShrink: 0, padding: 0,
+        border: '1.5px solid #EDE8DF', background: '#fff',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.5 : 1,
+      }}>
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        {children}
+      </svg>
+    </button>
   )
 }
 
