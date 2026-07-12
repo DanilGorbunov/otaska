@@ -42,9 +42,29 @@ const tabs = [
   },
 ]
 
+// Reuse one AudioContext instead of creating a fresh one per call — a fresh
+// context can only start inside a user-gesture handler, and playPop() is
+// triggered by realtime Convex updates, not clicks, so it would otherwise
+// always log Chrome's autoplay-blocked warning.
+let sharedAudioCtx: AudioContext | null = null
+
+if (typeof window !== 'undefined') {
+  const resumeOnGesture = () => {
+    if (!sharedAudioCtx) {
+      sharedAudioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
+    }
+    sharedAudioCtx.resume().catch(() => {})
+    window.removeEventListener('pointerdown', resumeOnGesture)
+    window.removeEventListener('keydown', resumeOnGesture)
+  }
+  window.addEventListener('pointerdown', resumeOnGesture)
+  window.addEventListener('keydown', resumeOnGesture)
+}
+
 function playPop() {
+  const ctx = sharedAudioCtx
+  if (!ctx || ctx.state !== 'running') return
   try {
-    const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
     const osc = ctx.createOscillator()
     const gain = ctx.createGain()
     osc.connect(gain)
