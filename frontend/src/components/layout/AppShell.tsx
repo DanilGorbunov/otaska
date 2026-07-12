@@ -67,7 +67,7 @@ export function AppShell() {
   }
 
   return (
-    <div style={{ background: '#F2F2F7', minHeight: '100dvh', overflow: 'hidden', position: 'relative' }}>
+    <div style={{ background: '#F2F2F7', minHeight: '100dvh', position: 'relative' }}>
       <div
         key={location.key}
         style={{

@@ -127,20 +127,26 @@ export function Dashboard() {
         </div>
       )}
 
-      {/* Header */}
-      <div style={{ padding: '24px 16px 12px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-        <div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: '#1A1612', letterSpacing: -0.5 }}>Мої записи</div>
-          <div style={{ fontSize: 13, color: '#9A8060', marginTop: 2 }}>
-            {active > 0 ? `${active} активних · ${done} виконано` : 'Немає активних записів'}
+      {/* Sticky header */}
+      <div style={{
+        position: 'sticky', top: 0, zIndex: 60,
+        background: 'rgba(245,244,241,.94)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+        borderBottom: '0.5px solid rgba(154,128,96,.2)',
+      }}>
+        <div style={{ padding: '20px 16px 14px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 26, fontWeight: 800, color: '#1A1612', letterSpacing: -0.5 }}>Мої записи</div>
+            <div style={{ fontSize: 13, color: '#9A8060', marginTop: 2 }}>
+              {active > 0 ? `${active} активних · ${done} виконано` : 'Немає активних записів'}
+            </div>
           </div>
+          {filteredEntries.length > 0 && (
+            <button onClick={() => selectMode ? exitSelectMode() : setSelectMode(true)}
+              style={{ marginTop: 4, padding: '6px 12px', borderRadius: 10, border: '1.5px solid #EDE8DF', background: selectMode ? '#1A1612' : '#fff', color: selectMode ? '#fff' : '#1A1612', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>
+              {selectMode ? 'Скасувати' : 'Вибрати'}
+            </button>
+          )}
         </div>
-        {filteredEntries.length > 0 && (
-          <button onClick={() => selectMode ? exitSelectMode() : setSelectMode(true)}
-            style={{ marginTop: 4, padding: '6px 12px', borderRadius: 10, border: '1.5px solid #EDE8DF', background: selectMode ? '#1A1612' : '#fff', color: selectMode ? '#fff' : '#1A1612', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>
-            {selectMode ? 'Скасувати' : 'Вибрати'}
-          </button>
-        )}
       </div>
 
       {/* Search */}

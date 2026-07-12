@@ -277,6 +277,21 @@ export const listTasks = query({
   },
 })
 
+// Persists manual drag-to-reorder within a project's task list. Only touches
+// taskOrder, leaving AI-inferred dependsOnTaskIds untouched.
+export const reorderTasks = mutation({
+  args: { orderedIds: v.array(v.id("entries")) },
+  handler: async (ctx, { orderedIds }) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+    for (let i = 0; i < orderedIds.length; i++) {
+      const task = await ctx.db.get(orderedIds[i])
+      if (!task || task.clientId !== userId) continue
+      await ctx.db.patch(orderedIds[i], { taskOrder: i })
+    }
+  },
+})
+
 // Bulk-applies AI-inferred sequencing (order + dependencies) to a project's tasks
 export const setTaskOrder = mutation({
   args: {

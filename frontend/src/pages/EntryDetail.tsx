@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useAction } from 'convex/react'
 import {
-  DndContext, DragOverlay, MouseSensor, TouchSensor, useSensor, useSensors, useDraggable, useDroppable,
+  DndContext, DragOverlay, MouseSensor, TouchSensor, useSensor, useSensors, useDroppable, closestCenter,
   type DragEndEvent, type DragStartEvent,
 } from '@dnd-kit/core'
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
 import { ProjectTaskAdder } from '../components/ProjectTaskAdder'
@@ -21,7 +24,7 @@ function PublishChat({ state, onMsg, onDone, onClose }: {
   onClose: () => void
 }) {
   const [input, setInput] = useState('')
-  return (
+  return createPortal((
     <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(6px)' }} onClick={onClose} />
       <div style={{ position: 'relative', width: '100%', maxWidth: 480, zIndex: 201, background: '#F5F4F1', borderRadius: '24px 24px 0 0', maxHeight: '75dvh', display: 'flex', flexDirection: 'column', boxShadow: '0 -8px 48px rgba(0,0,0,.22)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
@@ -61,7 +64,7 @@ function PublishChat({ state, onMsg, onDone, onClose }: {
       </div>
       <style>{`@keyframes dotA { 0%,80%,100%{opacity:.25;transform:scale(.7)} 40%{opacity:1;transform:scale(1)} }`}</style>
     </div>
-  )
+  ), document.body)
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -74,6 +77,7 @@ export function EntryDetail() {
   const updateEntry = useMutation(api.entries.update)
   const removeEntry = useMutation(api.entries.remove)
   const moveToProject = useMutation(api.entries.moveToProject)
+  const reorderTasks = useMutation(api.entries.reorderTasks)
   const createTask = useMutation(api.entries.createTask)
   const publishTask = useMutation(api.entries.publishTask)
   const sendProposal = useMutation(api.proposals.create)
@@ -177,6 +181,11 @@ export function EntryDetail() {
   // Publish chat state
   const [publishChat, setPublishChat] = useState<PublishState | null>(null)
 
+  const mouseSensor = useSensor(MouseSensor, { activationConstraint: { distance: 8 } })
+  const touchSensor = useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
+  const taskDragSensors = useSensors(mouseSensor, touchSensor)
+  const [draggingTaskTitle, setDraggingTaskTitle] = useState<string | null>(null)
+
   if (entry === undefined) return (
     <div style={{ textAlign: 'center', padding: 64, color: '#9A8060', fontFamily: 'system-ui' }}>Завантаження…</div>
   )
@@ -267,13 +276,9 @@ export function EntryDetail() {
     setPublishChat(null)
   }
 
-  const draftTasks = tasks.filter(t => t.status === 'draft')
-  const openTasks = tasks.filter(t => t.status === 'open')
-
-  const mouseSensor = useSensor(MouseSensor, { activationConstraint: { distance: 8 } })
-  const touchSensor = useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
-  const taskDragSensors = useSensors(mouseSensor, touchSensor)
-  const [draggingTaskTitle, setDraggingTaskTitle] = useState<string | null>(null)
+  const byTaskOrder = (a: { taskOrder?: number }, b: { taskOrder?: number }) => (a.taskOrder ?? Infinity) - (b.taskOrder ?? Infinity)
+  const draftTasks = tasks.filter(t => t.status === 'draft').sort(byTaskOrder)
+  const openTasks = tasks.filter(t => t.status === 'open').sort(byTaskOrder)
 
   const handleTaskDragStart = (event: DragStartEvent) => {
     const found = tasks.find(t => t._id === event.active.id)
@@ -282,8 +287,22 @@ export function EntryDetail() {
 
   const handleTaskDragEnd = (event: DragEndEvent) => {
     setDraggingTaskTitle(null)
-    if (event.over?.id === 'detach-from-project') {
-      moveToProject({ id: event.active.id as Id<'entries'>, projectId: null }).catch(() => null)
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    if (over.id === 'detach-from-project') {
+      moveToProject({ id: active.id as Id<'entries'>, projectId: null }).catch(() => null)
+      return
+    }
+
+    // Reorder within whichever list (open/draft) both items belong to
+    for (const list of [openTasks, draftTasks]) {
+      const activeIndex = list.findIndex(t => t._id === active.id)
+      const overIndex = list.findIndex(t => t._id === over.id)
+      if (activeIndex === -1 || overIndex === -1) continue
+      const reordered = arrayMove(list, activeIndex, overIndex)
+      reorderTasks({ orderedIds: reordered.map(t => t._id) }).catch(() => null)
+      return
     }
   }
 
@@ -414,7 +433,7 @@ export function EntryDetail() {
 
         {/* ── PROJECT: Task list ── */}
         {isProject && (
-          <DndContext sensors={taskDragSensors} onDragStart={handleTaskDragStart} onDragEnd={handleTaskDragEnd}>
+          <DndContext sensors={taskDragSensors} collisionDetection={closestCenter} onDragStart={handleTaskDragStart} onDragEnd={handleTaskDragEnd}>
             <ProjectMap tasks={tasks} />
 
             {tasks.length >= 2 && (
@@ -438,16 +457,18 @@ export function EntryDetail() {
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase' as const, letterSpacing: 1, marginBottom: 8 }}>Опубліковані</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {openTasks.map(t => (
-                    <TaskRow key={t._id} id={t._id} onOpen={() => navigate(`/app/entries/${t._id}`)}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22C55E', flexShrink: 0 }} />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: '#1A1612' }}>{t.title}</div>
-                        {t.budgetMin && t.budgetMax && <div style={{ fontSize: 12, color: '#EF9F27', fontWeight: 700 }}>€{t.budgetMin}–{t.budgetMax}</div>}
-                      </div>
-                      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#C0B49A" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
-                    </TaskRow>
-                  ))}
+                  <SortableContext items={openTasks.map(t => t._id)} strategy={verticalListSortingStrategy}>
+                    {openTasks.map(t => (
+                      <TaskRow key={t._id} id={t._id} onOpen={() => navigate(`/app/entries/${t._id}`)}>
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22C55E', flexShrink: 0 }} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: '#1A1612' }}>{t.title}</div>
+                          {t.budgetMin && t.budgetMax && <div style={{ fontSize: 12, color: '#EF9F27', fontWeight: 700 }}>€{t.budgetMin}–{t.budgetMax}</div>}
+                        </div>
+                        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#C0B49A" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
+                      </TaskRow>
+                    ))}
+                  </SortableContext>
                 </div>
               </div>
             )}
@@ -457,21 +478,23 @@ export function EntryDetail() {
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase' as const, letterSpacing: 1, marginBottom: 8 }}>Чернетки</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {draftTasks.map(t => (
-                    <TaskRow key={t._id} id={t._id} onOpen={() => navigate(`/app/entries/${t._id}`)}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#D1C8B8', flexShrink: 0 }} />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: '#1A1612' }}>{t.title}</div>
-                        {t.category && <div style={{ fontSize: 12, color: '#9A8060' }}>{t.category}</div>}
-                      </div>
-                      <button onClick={e => { e.stopPropagation(); startPublish(t._id, t.title) }} title="Опублікувати"
-                        style={{ width: 36, height: 36, borderRadius: '50%', background: '#EF9F27', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#1A1612" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M5 12h14M13 6l6 6-6 6" />
-                        </svg>
-                      </button>
-                    </TaskRow>
-                  ))}
+                  <SortableContext items={draftTasks.map(t => t._id)} strategy={verticalListSortingStrategy}>
+                    {draftTasks.map(t => (
+                      <TaskRow key={t._id} id={t._id} onOpen={() => navigate(`/app/entries/${t._id}`)}>
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#D1C8B8', flexShrink: 0 }} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: '#1A1612' }}>{t.title}</div>
+                          {t.category && <div style={{ fontSize: 12, color: '#9A8060' }}>{t.category}</div>}
+                        </div>
+                        <button onClick={e => { e.stopPropagation(); startPublish(t._id, t.title) }} title="Опублікувати"
+                          style={{ width: 36, height: 36, borderRadius: '50%', background: '#EF9F27', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#1A1612" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M5 12h14M13 6l6 6-6 6" />
+                          </svg>
+                        </button>
+                      </TaskRow>
+                    ))}
+                  </SortableContext>
                 </div>
               </div>
             )}
@@ -744,13 +767,14 @@ export function EntryDetail() {
 }
 
 function TaskRow({ id, onOpen, children }: { id: Id<'entries'>; onOpen: () => void; children: React.ReactNode }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id })
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
   return (
     <div ref={setNodeRef} {...listeners} {...attributes} onClick={onOpen}
       style={{
         background: '#fff', borderRadius: 14, padding: '12px 14px', border: '1.5px solid #EDE8DF',
         display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
         opacity: isDragging ? 0.35 : 1, touchAction: 'none',
+        transform: CSS.Transform.toString(transform), transition: transition ?? undefined,
       }}>
       {children}
     </div>
