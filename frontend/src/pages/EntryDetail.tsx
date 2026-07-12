@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useAction } from 'convex/react'
+import {
+  DndContext, DragOverlay, MouseSensor, TouchSensor, useSensor, useSensors, useDraggable, useDroppable,
+  type DragEndEvent, type DragStartEvent,
+} from '@dnd-kit/core'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
 import { ProjectTaskAdder } from '../components/ProjectTaskAdder'
@@ -69,6 +73,7 @@ export function EntryDetail() {
   const me = useQuery(api.users.getMe)
   const updateEntry = useMutation(api.entries.update)
   const removeEntry = useMutation(api.entries.remove)
+  const moveToProject = useMutation(api.entries.moveToProject)
   const createTask = useMutation(api.entries.createTask)
   const publishTask = useMutation(api.entries.publishTask)
   const sendProposal = useMutation(api.proposals.create)
@@ -265,6 +270,23 @@ export function EntryDetail() {
   const draftTasks = tasks.filter(t => t.status === 'draft')
   const openTasks = tasks.filter(t => t.status === 'open')
 
+  const mouseSensor = useSensor(MouseSensor, { activationConstraint: { distance: 8 } })
+  const touchSensor = useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
+  const taskDragSensors = useSensors(mouseSensor, touchSensor)
+  const [draggingTaskTitle, setDraggingTaskTitle] = useState<string | null>(null)
+
+  const handleTaskDragStart = (event: DragStartEvent) => {
+    const found = tasks.find(t => t._id === event.active.id)
+    if (found) setDraggingTaskTitle(found.title)
+  }
+
+  const handleTaskDragEnd = (event: DragEndEvent) => {
+    setDraggingTaskTitle(null)
+    if (event.over?.id === 'detach-from-project') {
+      moveToProject({ id: event.active.id as Id<'entries'>, projectId: null }).catch(() => null)
+    }
+  }
+
   return (
     <div style={{ fontFamily: 'system-ui,-apple-system,sans-serif', background: '#F5F4F1', minHeight: '100dvh' }}>
       {/* Nav */}
@@ -392,7 +414,7 @@ export function EntryDetail() {
 
         {/* ── PROJECT: Task list ── */}
         {isProject && (
-          <>
+          <DndContext sensors={taskDragSensors} onDragStart={handleTaskDragStart} onDragEnd={handleTaskDragEnd}>
             <ProjectMap tasks={tasks} />
 
             {tasks.length >= 2 && (
@@ -417,14 +439,14 @@ export function EntryDetail() {
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase' as const, letterSpacing: 1, marginBottom: 8 }}>Опубліковані</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {openTasks.map(t => (
-                    <div key={t._id} onClick={() => navigate(`/app/entries/${t._id}`)} style={{ background: '#fff', borderRadius: 14, padding: '12px 14px', border: '1.5px solid #EDE8DF', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                    <TaskRow key={t._id} id={t._id} onOpen={() => navigate(`/app/entries/${t._id}`)}>
                       <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22C55E', flexShrink: 0 }} />
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 14, fontWeight: 600, color: '#1A1612' }}>{t.title}</div>
                         {t.budgetMin && t.budgetMax && <div style={{ fontSize: 12, color: '#EF9F27', fontWeight: 700 }}>€{t.budgetMin}–{t.budgetMax}</div>}
                       </div>
                       <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#C0B49A" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
-                    </div>
+                    </TaskRow>
                   ))}
                 </div>
               </div>
@@ -436,7 +458,7 @@ export function EntryDetail() {
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase' as const, letterSpacing: 1, marginBottom: 8 }}>Чернетки</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {draftTasks.map(t => (
-                    <div key={t._id} onClick={() => navigate(`/app/entries/${t._id}`)} style={{ background: '#fff', borderRadius: 14, padding: '12px 14px', border: '1.5px solid #EDE8DF', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                    <TaskRow key={t._id} id={t._id} onOpen={() => navigate(`/app/entries/${t._id}`)}>
                       <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#D1C8B8', flexShrink: 0 }} />
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 14, fontWeight: 600, color: '#1A1612' }}>{t.title}</div>
@@ -448,7 +470,7 @@ export function EntryDetail() {
                           <path d="M5 12h14M13 6l6 6-6 6" />
                         </svg>
                       </button>
-                    </div>
+                    </TaskRow>
                   ))}
                 </div>
               </div>
@@ -460,7 +482,21 @@ export function EntryDetail() {
                 <div style={{ fontSize: 14 }}>Додай перший таск вище</div>
               </div>
             )}
-          </>
+
+            {draggingTaskTitle && <DetachDropZone />}
+
+            <DragOverlay dropAnimation={null}>
+              {draggingTaskTitle && (
+                <div style={{
+                  background: '#fff', borderRadius: 14, border: '1.5px solid #EF9F27', padding: '12px 14px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,.18)', fontSize: 14, fontWeight: 600, color: '#1A1612',
+                  maxWidth: 320,
+                }}>
+                  {draggingTaskTitle}
+                </div>
+              )}
+            </DragOverlay>
+          </DndContext>
         )}
 
         {/* ── ENTRY: Action buttons ── */}
@@ -703,6 +739,36 @@ export function EntryDetail() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function TaskRow({ id, onOpen, children }: { id: Id<'entries'>; onOpen: () => void; children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id })
+  return (
+    <div ref={setNodeRef} {...listeners} {...attributes} onClick={onOpen}
+      style={{
+        background: '#fff', borderRadius: 14, padding: '12px 14px', border: '1.5px solid #EDE8DF',
+        display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
+        opacity: isDragging ? 0.35 : 1, touchAction: 'none',
+      }}>
+      {children}
+    </div>
+  )
+}
+
+function DetachDropZone() {
+  const { setNodeRef, isOver } = useDroppable({ id: 'detach-from-project' })
+  return (
+    <div ref={setNodeRef}
+      style={{
+        marginBottom: 16, padding: '14px', borderRadius: 14, textAlign: 'center',
+        border: isOver ? '1.5px dashed #DC2626' : '1.5px dashed #C0B49A',
+        background: isOver ? 'rgba(220,38,38,.06)' : 'rgba(154,128,96,.06)',
+        color: isOver ? '#DC2626' : '#9A8060', fontSize: 13, fontWeight: 600,
+        transition: 'background .1s, border-color .1s, color .1s',
+      }}>
+      ⤴ Відпусти тут, щоб прибрати з проєкту
     </div>
   )
 }

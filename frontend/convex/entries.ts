@@ -234,6 +234,27 @@ export const update = mutation({
   },
 })
 
+// Moves a standalone entry into a project (making it a task), or moves a task
+// out of a project back to standalone (projectId: null).
+export const moveToProject = mutation({
+  args: {
+    id: v.id("entries"),
+    projectId: v.union(v.id("entries"), v.null()),
+  },
+  handler: async (ctx, { id, projectId }) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+    const entry = await ctx.db.get(id)
+    if (!entry || entry.clientId !== userId) throw new Error("Not found")
+    if (entry.entryType === "project") throw new Error("Projects can't be moved into other projects")
+    if (projectId) {
+      const project = await ctx.db.get(projectId)
+      if (!project || project.clientId !== userId || project.entryType !== "project") throw new Error("Invalid project")
+    }
+    await ctx.db.patch(id, { projectId: projectId ?? undefined })
+  },
+})
+
 export const remove = mutation({
   args: { id: v.id("entries") },
   handler: async (ctx, { id }) => {

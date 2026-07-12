@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useMutation } from 'convex/react'
+import {
+  DndContext, DragOverlay, MouseSensor, TouchSensor, useSensor, useSensors, useDraggable, useDroppable,
+  type DragEndEvent, type DragStartEvent,
+} from '@dnd-kit/core'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
 
@@ -12,12 +16,18 @@ export function Dashboard() {
   const createAndPublish = useMutation(api.entries.createAndPublish)
   const updateEntry = useMutation(api.entries.update)
   const removeEntry = useMutation(api.entries.remove)
+  const moveToProject = useMutation(api.entries.moveToProject)
   const [search, setSearch] = useState('')
   const [publishingPending, setPublishingPending] = useState(false)
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<Id<'entries'>>>(new Set())
   const [bulkBusy, setBulkBusy] = useState(false)
   const [showDone, setShowDone] = useState(false)
+  const [draggingEntry, setDraggingEntry] = useState<EntryCardData | null>(null)
+
+  const mouseSensor = useSensor(MouseSensor, { activationConstraint: { distance: 8 } })
+  const touchSensor = useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
+  const dragSensors = useSensors(mouseSensor, touchSensor)
 
   // After registration: pending entries were saved to localStorage before signIn.
   // Now auth is ready — create them on first Dashboard mount.
@@ -93,7 +103,20 @@ export function Dashboard() {
     }
   }
 
+  const handleDragStart = (event: DragStartEvent) => {
+    const found = filteredEntries.find(e => e._id === event.active.id)
+    if (found) setDraggingEntry(found)
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setDraggingEntry(null)
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    moveToProject({ id: active.id as Id<'entries'>, projectId: over.id as Id<'entries'> }).catch(() => null)
+  }
+
   return (
+    <DndContext sensors={dragSensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
     <div style={{ background: '#F5F4F1', minHeight: '100dvh', fontFamily: 'system-ui,-apple-system,sans-serif' }}>
 
       {/* Publishing banner */}
@@ -174,7 +197,7 @@ export function Dashboard() {
                 {activeFilteredEntries.map(e => (
                   <EntryCard key={e._id} entry={e} selectMode={selectMode} selected={selectedIds.has(e._id)}
                     onToggle={() => toggleSelected(e._id)} onOpen={() => navigate(`/app/entries/${e._id}`)}
-                    onOpenFirst={id => navigate(`/app/entries/${id}`)} />
+                    onOpenFirst={id => navigate(`/app/entries/${id}`)} dragDisabled={selectMode} />
                 ))}
               </div>
 
@@ -194,7 +217,8 @@ export function Dashboard() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
                       {doneFilteredEntries.map(e => (
                         <EntryCard key={e._id} entry={e} selectMode={selectMode} selected={selectedIds.has(e._id)}
-                          onToggle={() => toggleSelected(e._id)} onOpen={() => navigate(`/app/entries/${e._id}`)} muted />
+                          onToggle={() => toggleSelected(e._id)} onOpen={() => navigate(`/app/entries/${e._id}`)} muted
+                          dragDisabled={selectMode} />
                       ))}
                     </div>
                   )}
@@ -211,24 +235,8 @@ export function Dashboard() {
                   const m = matchCounts[e._id] as { count: number; first?: { _id: string; title: string; city?: string } } | undefined
                   const count = m?.count ?? 0
                   return (
-                    <div key={e._id} onClick={() => navigate(`/app/entries/${e._id}`)}
-                      style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #EDE8DF', cursor: 'pointer', overflow: 'hidden' }}>
-                      <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <span style={{ fontSize: 20, flexShrink: 0 }}>📁</span>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: '#1A1612' }}>{e.title}</div>
-                        {e.city && <div style={{ fontSize: 12, color: '#9A8060', marginTop: 2 }}>{e.city}</div>}
-                      </div>
-                      {count > 0
-                        ? <span style={{ fontSize: 12, fontWeight: 700, color: '#EF9F27', background: 'rgba(239,159,39,.12)', padding: '3px 8px', borderRadius: 20, flexShrink: 0 }}>
-                            {count}
-                          </span>
-                        : <span style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
-                            {[0,1,2].map(i => <span key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: '#C0B49A', display: 'inline-block', animation: `dotPulse 1.4s ease-in-out ${i * 0.2}s infinite` }} />)}
-                          </span>
-                      }
-                      </div>
-                    </div>
+                    <ProjectCard key={e._id} id={e._id} title={e.title} city={e.city} count={count}
+                      onOpen={() => navigate(`/app/entries/${e._id}`)} />
                   )
                 })}
               </div>
@@ -238,6 +246,47 @@ export function Dashboard() {
       )}
 
       <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} } @keyframes dotPulse { 0%,80%,100%{transform:scale(.6);opacity:.4} 40%{transform:scale(1);opacity:1} }`}</style>
+    </div>
+    <DragOverlay dropAnimation={null}>
+      {draggingEntry && (
+        <div style={{
+          background: '#fff', borderRadius: 16, border: '1.5px solid #EF9F27', padding: '14px 16px',
+          boxShadow: '0 8px 24px rgba(0,0,0,.18)', fontSize: 14, fontWeight: 700, color: '#1A1612',
+          maxWidth: 320, opacity: 0.95,
+        }}>
+          {draggingEntry.title}
+        </div>
+      )}
+    </DragOverlay>
+    </DndContext>
+  )
+}
+
+function ProjectCard({ id, title, city, count, onOpen }: {
+  id: Id<'entries'>; title?: string; city?: string; count: number; onOpen: () => void
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id })
+  return (
+    <div ref={setNodeRef} onClick={onOpen}
+      style={{
+        background: isOver ? 'rgba(239,159,39,.08)' : '#fff', borderRadius: 16, cursor: 'pointer', overflow: 'hidden',
+        border: isOver ? '1.5px dashed #EF9F27' : '1.5px solid #EDE8DF', transition: 'background .1s, border-color .1s',
+      }}>
+      <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <span style={{ fontSize: 20, flexShrink: 0 }}>📁</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#1A1612' }}>{title}</div>
+          {city && <div style={{ fontSize: 12, color: '#9A8060', marginTop: 2 }}>{city}</div>}
+        </div>
+        {count > 0
+          ? <span style={{ fontSize: 12, fontWeight: 700, color: '#EF9F27', background: 'rgba(239,159,39,.12)', padding: '3px 8px', borderRadius: 20, flexShrink: 0 }}>
+              {count}
+            </span>
+          : <span style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
+              {[0,1,2].map(i => <span key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: '#C0B49A', display: 'inline-block', animation: `dotPulse 1.4s ease-in-out ${i * 0.2}s infinite` }} />)}
+            </span>
+        }
+      </div>
     </div>
   )
 }
@@ -273,21 +322,24 @@ interface EntryCardData {
   aiMatchFirstCity?: string
 }
 
-function EntryCard({ entry: e, selectMode, selected, onToggle, onOpen, onOpenFirst, muted }: {
+function EntryCard({ entry: e, selectMode, selected, onToggle, onOpen, onOpenFirst, muted, dragDisabled }: {
   entry: EntryCardData; selectMode: boolean; selected: boolean; onToggle: () => void; onOpen: () => void
-  onOpenFirst?: (id: string) => void; muted?: boolean
+  onOpenFirst?: (id: string) => void; muted?: boolean; dragDisabled?: boolean
 }) {
   const hasAi = e.aiMatchCount != null
   const count = e.aiMatchCount ?? 0
   const first = !muted && hasAi && e.aiMatchFirstId
     ? { _id: e.aiMatchFirstId, title: e.aiMatchFirstTitle ?? '', city: e.aiMatchFirstCity }
     : undefined
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: e._id, disabled: dragDisabled })
 
   return (
-    <div onClick={() => selectMode ? onToggle() : onOpen()}
+    <div ref={setNodeRef} {...listeners} {...attributes}
+      onClick={() => selectMode ? onToggle() : onOpen()}
       style={{
         background: muted ? '#FAF8F4' : '#fff', borderRadius: 16, cursor: 'pointer', overflow: 'hidden',
         border: selected ? '1.5px solid #EF9F27' : muted ? '1.5px solid #EFE9DD' : '1.5px solid #EDE8DF',
+        opacity: isDragging ? 0.35 : 1, touchAction: dragDisabled ? undefined : 'none',
       }}>
       <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
         {selectMode && (
