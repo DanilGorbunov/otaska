@@ -47,7 +47,7 @@ export function AppShell() {
 
   if (isDesktop) {
     return (
-      <div style={{ display: 'flex', minHeight: '100dvh', background: '#F2F2F7' }}>
+      <div style={{ display: 'flex', minHeight: '100dvh', background: 'var(--bg-page)' }}>
         <Sidebar />
         <main
           key={location.key}
@@ -67,14 +67,13 @@ export function AppShell() {
   }
 
   return (
-    <div style={{ background: '#F2F2F7', minHeight: '100dvh', position: 'relative' }}>
+    <div style={{ background: 'var(--bg-page)', minHeight: '100dvh', position: 'relative' }}>
       <div
         key={location.key}
         style={{
           width: '100%', maxWidth: 430, margin: '0 auto',
           paddingBottom: 72,
           animation,
-          willChange: 'transform',
         }}
       >
         <Outlet />

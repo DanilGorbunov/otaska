@@ -25,57 +25,66 @@ export function Login() {
     }
   }
 
+  const fieldStyle: React.CSSProperties = {
+    width: '100%', padding: '13px 14px', borderRadius: 'var(--radius-md)',
+    border: '1.5px solid var(--border)', fontSize: 16, outline: 'none',
+    fontFamily: 'inherit', boxSizing: 'border-box', color: 'var(--text-primary)',
+    background: 'var(--bg-field)', transition: 'border-color .15s',
+  }
+  const focusField = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = 'var(--accent)' }
+  const blurField = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = 'var(--border)' }
+
   return (
     <div style={{
-      minHeight: '100dvh', background: '#F2F2F7',
+      minHeight: '100dvh', background: 'var(--bg-page)',
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      padding: 24,
+      padding: 24, fontFamily: 'inherit',
     }}>
       <div style={{ width: '100%', maxWidth: 390 }}>
         <div style={{ textAlign: 'center', marginBottom: 40 }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
             <Logo size={52} />
           </div>
-          <h1 style={{ fontSize: 28, fontWeight: 700, margin: '0 0 8px' }}>Вхід</h1>
-          <p style={{ fontSize: 15, color: '#8E8E93', margin: 0 }}>Раді бачити знову</p>
+          <h1 style={{ fontSize: 28, fontWeight: 800, margin: '0 0 8px', color: 'var(--text-primary)', letterSpacing: '-.5px' }}>Вхід</h1>
+          <p style={{ fontSize: 15, color: 'var(--text-secondary)', margin: 0 }}>Раді бачити знову</p>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ background: '#fff', borderRadius: 20, padding: 24, boxShadow: '0 2px 12px rgba(0,0,0,.08)' }}>
+        <form onSubmit={handleSubmit} style={{ background: 'var(--bg-surface)', borderRadius: 'var(--radius-lg)', padding: 24, border: '1.5px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
           <div style={{ marginBottom: 14 }}>
-            <label style={{ fontSize: 13, fontWeight: 600, color: '#8E8E93', display: 'block', marginBottom: 6 }}>Email</label>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 1, display: 'block', marginBottom: 6 }}>Email</label>
             <input
               type="email" value={email} onChange={e => setEmail(e.target.value)}
               required placeholder="your@email.com"
-              style={{ width: '100%', padding: '13px 14px', borderRadius: 12, border: '1px solid #E5E5EA', fontSize: 17, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' as const }}
-              onFocus={e => { e.currentTarget.style.borderColor = '#111' }}
-              onBlur={e => { e.currentTarget.style.borderColor = '#E5E5EA' }}
+              style={fieldStyle}
+              onFocus={focusField}
+              onBlur={blurField}
             />
           </div>
           <div style={{ marginBottom: 20 }}>
-            <label style={{ fontSize: 13, fontWeight: 600, color: '#8E8E93', display: 'block', marginBottom: 6 }}>Пароль</label>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 1, display: 'block', marginBottom: 6 }}>Пароль</label>
             <input
               type="password" value={password} onChange={e => setPassword(e.target.value)}
               required placeholder="••••••••"
-              style={{ width: '100%', padding: '13px 14px', borderRadius: 12, border: '1px solid #E5E5EA', fontSize: 17, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' as const }}
-              onFocus={e => { e.currentTarget.style.borderColor = '#111' }}
-              onBlur={e => { e.currentTarget.style.borderColor = '#E5E5EA' }}
+              style={fieldStyle}
+              onFocus={focusField}
+              onBlur={blurField}
             />
           </div>
 
-          {error && <div style={{ color: '#FF3B30', fontSize: 14, marginBottom: 14, textAlign: 'center' }}>{error}</div>}
+          {error && <div style={{ color: 'var(--danger)', fontSize: 14, marginBottom: 14, textAlign: 'center' }}>{error}</div>}
 
           <button type="submit" disabled={loading} style={{
-            width: '100%', padding: 16, borderRadius: 14, border: 'none', cursor: 'pointer',
-            background: '#111111', color: '#fff', fontSize: 17, fontWeight: 700, fontFamily: 'inherit',
-            boxShadow: '0 4px 16px rgba(0,0,0,.2)', opacity: loading ? 0.7 : 1,
+            width: '100%', padding: 16, borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer',
+            background: 'var(--dark)', color: 'var(--text-on-dark)', fontSize: 16, fontWeight: 700, fontFamily: 'inherit',
+            opacity: loading ? 0.7 : 1,
           }}>
             {loading ? 'Входимо...' : 'Увійти'}
           </button>
         </form>
 
-        <p style={{ textAlign: 'center', fontSize: 15, color: '#8E8E93', marginTop: 20 }}>
+        <p style={{ textAlign: 'center', fontSize: 15, color: 'var(--text-secondary)', marginTop: 20 }}>
           Немає акаунту?{' '}
-          <button onClick={() => navigate('/')} style={{ color: '#111111', fontWeight: 600, textDecoration: 'none', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 15 }}>
+          <button onClick={() => navigate('/')} style={{ color: 'var(--accent-strong)', fontWeight: 700, textDecoration: 'none', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 15 }}>
             Реєстрація
           </button>
         </p>

@@ -212,15 +212,15 @@ export function Landing() {
 
   // ─── Styles ────────────────────────────────────────────────────────────────
   const S = {
-    page:     { minHeight: '100dvh', background: '#F5F4F1', color: '#1A1612', fontFamily: "system-ui,-apple-system,sans-serif" } as const,
-    nav:      { position: 'sticky', top: 0, zIndex: 50, background: 'rgba(245,244,241,.92)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid #EDE8DF' } as const,
+    page:     { minHeight: '100dvh', background: 'var(--bg-page)', color: 'var(--text-primary)', fontFamily: "system-ui,-apple-system,sans-serif" } as const,
+    nav:      { position: 'sticky', top: 0, zIndex: 50, background: 'rgba(245,244,241,.92)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid var(--border)' } as const,
     navInner: { maxWidth: 640, margin: '0 auto', padding: '0 20px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between' } as const,
     wrap:     { maxWidth: 640, margin: '0 auto', padding: '0 20px' } as const,
-    card:     { background: '#fff', border: '1.5px solid #EDE8DF', borderRadius: 16, padding: 28 } as const,
-    inputEl:  { width: '100%', padding: '14px 16px', borderRadius: 12, border: '1.5px solid #EDE8DF', fontSize: 16, color: '#1A1612', outline: 'none', background: '#fff', fontFamily: 'inherit', boxSizing: 'border-box' } as const,
-    btnAmber: { width: '100%', padding: 16, borderRadius: 12, background: '#EF9F27', color: '#1A1612', fontFamily: 'system-ui', fontSize: 16, fontWeight: 700, border: 'none', cursor: 'pointer' } as const,
-    btnGhost: { flex: 1, padding: 15, borderRadius: 12, background: 'transparent', color: '#5A4A2E', fontFamily: 'system-ui', fontSize: 16, fontWeight: 500, border: '1.5px solid #EDE8DF', cursor: 'pointer' } as const,
-    back:     { display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: '#9A8060', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'system-ui', marginBottom: 32, padding: 0 } as const,
+    card:     { background: '#fff', border: '1.5px solid var(--border)', borderRadius: 16, padding: 28 } as const,
+    inputEl:  { width: '100%', padding: '14px 16px', borderRadius: 12, border: '1.5px solid var(--border)', fontSize: 16, color: 'var(--text-primary)', outline: 'none', background: '#fff', fontFamily: 'inherit', boxSizing: 'border-box' } as const,
+    btnAmber: { width: '100%', padding: 16, borderRadius: 12, background: 'var(--accent)', color: 'var(--text-primary)', fontFamily: 'system-ui', fontSize: 16, fontWeight: 700, border: 'none', cursor: 'pointer' } as const,
+    btnGhost: { flex: 1, padding: 15, borderRadius: 12, background: 'transparent', color: 'var(--text-tertiary)', fontFamily: 'system-ui', fontSize: 16, fontWeight: 500, border: '1.5px solid var(--border)', cursor: 'pointer' } as const,
+    back:     { display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'system-ui', marginBottom: 32, padding: 0 } as const,
   }
 
   const Dots = () => (
@@ -228,11 +228,11 @@ export function Landing() {
       {[1, 2, 3, 4].map(i => (
         <div key={i} style={{
           width: i === step ? 20 : 8, height: 8, borderRadius: 99,
-          background: i === step ? '#EF9F27' : i < step ? '#EF9F27' : '#EDE8DF',
+          background: i === step ? 'var(--accent)' : i < step ? 'var(--accent)' : 'var(--border)',
           opacity: i < step ? 0.5 : 1, transition: 'all .3s',
         }} />
       ))}
-      <span style={{ fontSize: 12, fontWeight: 600, color: '#9A8060', marginLeft: 6, letterSpacing: '.3px', textTransform: 'uppercase' }}>
+      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginLeft: 6, letterSpacing: '.3px', textTransform: 'uppercase' }}>
         {STEP_NAMES[step - 1]}
       </span>
     </div>
@@ -240,15 +240,15 @@ export function Landing() {
 
   const Hex = ({ size = 64 }: { size?: number }) => (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
-      <polygon points="16,1.5 28.5,8.75 28.5,23.25 16,30.5 3.5,23.25 3.5,8.75" fill="#EF9F27" stroke="#BA7517" strokeWidth="1" />
-      <polyline points="9,16.5 13.5,21.5 23,10.5" stroke="#1A1612" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      <polygon points="16,1.5 28.5,8.75 28.5,23.25 16,30.5 3.5,23.25 3.5,8.75" fill="var(--accent)" stroke="var(--accent-strong)" strokeWidth="1" />
+      <polyline points="9,16.5 13.5,21.5 23,10.5" stroke="var(--text-primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 
   const QuestionMark = () => (
     <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
-      <path d="M11 10C11 7.2 13.2 5 16 5C18.8 5 21 7.2 21 10C21 12.8 18.8 14 16 14V17" stroke="#EF9F27" strokeWidth="2.5" strokeLinecap="round" />
-      <circle cx="16" cy="22" r="2" fill="#EF9F27" />
+      <path d="M11 10C11 7.2 13.2 5 16 5C18.8 5 21 7.2 21 10C21 12.8 18.8 14 16 14V17" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" />
+      <circle cx="16" cy="22" r="2" fill="var(--accent)" />
     </svg>
   )
 
@@ -273,20 +273,20 @@ export function Landing() {
           <a href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
             <Hex size={28} />
             <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-.3px' }}>
-              <span style={{ color: '#EF9F27', fontWeight: 800 }}>O</span>
-              <span style={{ color: '#1A1612' }}>Taska</span>
+              <span style={{ color: 'var(--accent)', fontWeight: 800 }}>O</span>
+              <span style={{ color: 'var(--text-primary)' }}>Taska</span>
             </span>
           </a>
           <Dots />
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <button onClick={toggleLocale} aria-label="Switch language" style={{
-              fontSize: 13, fontWeight: 600, color: '#9A8060', background: '#fff',
-              border: '1px solid #EDE8DF', borderRadius: 99, padding: '5px 10px',
+              fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', background: '#fff',
+              border: '1px solid var(--border)', borderRadius: 99, padding: '5px 10px',
               cursor: 'pointer', fontFamily: 'system-ui',
             }}>
               {i18n.language === 'uk' ? 'EN' : 'UA'}
             </button>
-            <button onClick={() => navigate('/login')} style={{ fontSize: 14, fontWeight: 500, color: '#9A8060', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'system-ui' }}>
+            <button onClick={() => navigate('/login')} style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'system-ui' }}>
               {t('landing.login')}
             </button>
           </div>
@@ -296,17 +296,17 @@ export function Landing() {
       {/* ═══ STEP 1: WRITE ═══ */}
       {step === 1 && (
         <div style={{ ...S.wrap, padding: '60px 20px 80px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-<h1 style={{ fontSize: 'clamp(40px,7vw,72px)', fontWeight: 800, lineHeight: 1.05, letterSpacing: -2, color: '#1A1612', marginBottom: 14 }}>
-            {t('landing.hero.title1')}<br /><span style={{ color: '#EF9F27' }}>{t('landing.hero.title2')}</span>
+<h1 style={{ fontSize: 'clamp(40px,7vw,72px)', fontWeight: 800, lineHeight: 1.05, letterSpacing: -2, color: 'var(--text-primary)', marginBottom: 14 }}>
+            {t('landing.hero.title1')}<br /><span style={{ color: 'var(--accent)' }}>{t('landing.hero.title2')}</span>
           </h1>
-          <p style={{ fontSize: 17, color: '#9A8060', lineHeight: 1.65, marginBottom: 36, maxWidth: 460 }}>
+          <p style={{ fontSize: 17, color: 'var(--text-secondary)', lineHeight: 1.65, marginBottom: 36, maxWidth: 460 }}>
             {t('landing.hero.subtitle1')}<br />{t('landing.hero.subtitle2')}
           </p>
 
           <div style={{ width: '100%', marginBottom: 16 }}>
             <div style={{
               background: '#fff',
-              border: `1.5px solid ${focused || task ? '#EF9F27' : '#EDE8DF'}`,
+              border: `1.5px solid ${focused || task ? 'var(--accent)' : 'var(--border)'}`,
               borderRadius: 16, padding: 20,
               boxShadow: focused ? '0 0 0 4px rgba(239,159,39,.12)' : '0 2px 12px rgba(0,0,0,.04)',
               transition: 'border-color .2s, box-shadow .2s',
@@ -319,21 +319,21 @@ export function Landing() {
                 onBlur={() => setFocused(false)}
                 placeholder={t('landing.form.placeholder')}
                 rows={4}
-                style={{ width: '100%', fontSize: 18, color: '#1A1612', border: 'none', outline: 'none', resize: 'none', background: 'transparent', lineHeight: 1.55, fontFamily: 'inherit' }}
+                style={{ width: '100%', fontSize: 18, color: 'var(--text-primary)', border: 'none', outline: 'none', resize: 'none', background: 'transparent', lineHeight: 1.55, fontFamily: 'inherit' }}
               />
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, paddingTop: 12, borderTop: '1px solid #EDE8DF' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
                 {/* Live AI status while typing */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
                   {task.length >= 6 && aiResult ? (
-                    <span style={{ color: '#EF9F27', fontWeight: 600 }}>
+                    <span style={{ color: 'var(--accent)', fontWeight: 600 }}>
                       {aiResult.emoji} {aiResult.category === t('landing.chat.categoryGeneric') ? t('landing.form.recognized') : aiResult.category}
                     </span>
                   ) : (
                     <>
                       {['0s', '.2s', '.4s'].map((d, i) => (
-                        <span key={i} style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: '#EF9F27', animation: `dotA 1.3s ease-in-out ${d} infinite` }} />
+                        <span key={i} style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: 'var(--accent)', animation: `dotA 1.3s ease-in-out ${d} infinite` }} />
                       ))}
-                      <span style={{ color: '#B4A898', marginLeft: 2 }}>{t('landing.form.recognizing')}</span>
+                      <span style={{ color: 'var(--text-dim)', marginLeft: 2 }}>{t('landing.form.recognizing')}</span>
                     </>
                   )}
                 </div>
@@ -343,8 +343,8 @@ export function Landing() {
                   style={{
                     padding: '10px 20px', borderRadius: 10, border: 'none',
                     cursor: task.trim().length >= 5 ? 'pointer' : 'not-allowed',
-                    background: task.trim().length >= 5 ? '#1A1612' : '#EDE8DF',
-                    color: task.trim().length >= 5 ? '#fff' : '#B4A898',
+                    background: task.trim().length >= 5 ? 'var(--text-primary)' : 'var(--border)',
+                    color: task.trim().length >= 5 ? '#fff' : 'var(--text-dim)',
                     fontFamily: 'system-ui', fontSize: 15, fontWeight: 600, transition: 'all .18s',
                   }}
                 >
@@ -358,9 +358,9 @@ export function Landing() {
             {TAGS.map(tag => (
               <button key={tag.label}
                 onClick={() => { setTask(tag.fill); setAiResult(null); textareaRef.current?.focus() }}
-                style={{ padding: '8px 16px', borderRadius: 20, background: '#fff', border: '1px solid #EDE8DF', fontSize: 14, color: '#5A4A2E', cursor: 'pointer', fontWeight: 500, fontFamily: 'system-ui' }}
-                onMouseOver={e => { e.currentTarget.style.borderColor = '#EF9F27'; e.currentTarget.style.color = '#EF9F27' }}
-                onMouseOut={e => { e.currentTarget.style.borderColor = '#EDE8DF'; e.currentTarget.style.color = '#5A4A2E' }}
+                style={{ padding: '8px 16px', borderRadius: 20, background: '#fff', border: '1px solid var(--border)', fontSize: 14, color: 'var(--text-tertiary)', cursor: 'pointer', fontWeight: 500, fontFamily: 'system-ui' }}
+                onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)' }}
+                onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-tertiary)' }}
               >
                 {tag.label}
               </button>
@@ -378,36 +378,36 @@ export function Landing() {
 
             {msgs.map((m, i) => m.card ? (
               <div key={i}>
-                <div style={{ background: '#fff', border: '2px solid #EF9F27', borderRadius: 16, padding: '12px 16px', marginBottom: 8, boxShadow: '0 4px 20px rgba(239,159,39,.12)' }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, color: '#B4924A', textTransform: 'uppercase', marginBottom: 6 }}>
+                <div style={{ background: '#fff', border: '2px solid var(--accent)', borderRadius: 16, padding: '12px 16px', marginBottom: 8, boxShadow: '0 4px 20px rgba(239,159,39,.12)' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 6 }}>
                     {t('landing.chat.goal')}{secondAiResult ? ` ${(m.cardIndex ?? 0) + 1}` : ''}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                     <span style={{ fontSize: 20 }}>{m.card.emoji}</span>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 800, color: '#1A1612' }}>{m.card.title}</div>
-                      <div style={{ fontSize: 12, color: '#9A8060' }}>{m.card.details}</div>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)' }}>{m.card.title}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{m.card.details}</div>
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const }}>
                     <select
                       value={m.card.category}
                       onChange={e => updateCardField((m.cardIndex ?? 0) as 0 | 1, 'category', e.target.value)}
-                      style={{ padding: '5px 10px', borderRadius: 99, border: 'none', background: '#FAEEDA', color: '#854F0B', fontSize: 12, fontWeight: 600, fontFamily: 'system-ui', cursor: 'pointer' }}
+                      style={{ padding: '5px 10px', borderRadius: 99, border: 'none', background: 'var(--bg-accent-tint)', color: 'var(--text-on-accent)', fontSize: 12, fontWeight: 600, fontFamily: 'system-ui', cursor: 'pointer' }}
                     >
                       {[...CATEGORIES.filter(c => c !== 'Всі'), m.card.category].filter((c, idx, arr) => arr.indexOf(c) === idx).map(c => (
                         <option key={c} value={c}>{c}</option>
                       ))}
                     </select>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 'auto' }}>
-                      <span style={{ fontSize: 13, color: '#9A8060' }}>€</span>
+                      <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>€</span>
                       <input type="number" value={m.card.budgetMin}
                         onChange={e => updateCardField((m.cardIndex ?? 0) as 0 | 1, 'budgetMin', e.target.value)}
-                        style={{ width: 52, padding: '4px 6px', borderRadius: 8, border: '1.5px solid #EDE8DF', fontSize: 13, fontWeight: 700, color: '#BA7517', fontFamily: 'inherit', textAlign: 'right' as const }} />
-                      <span style={{ fontSize: 13, color: '#9A8060' }}>–</span>
+                        style={{ width: 52, padding: '4px 6px', borderRadius: 8, border: '1.5px solid var(--border)', fontSize: 13, fontWeight: 700, color: 'var(--accent-strong)', fontFamily: 'inherit', textAlign: 'right' as const }} />
+                      <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>–</span>
                       <input type="number" value={m.card.budgetMax}
                         onChange={e => updateCardField((m.cardIndex ?? 0) as 0 | 1, 'budgetMax', e.target.value)}
-                        style={{ width: 52, padding: '4px 6px', borderRadius: 8, border: '1.5px solid #EDE8DF', fontSize: 13, fontWeight: 700, color: '#BA7517', fontFamily: 'inherit', textAlign: 'right' as const }} />
+                        style={{ width: 52, padding: '4px 6px', borderRadius: 8, border: '1.5px solid var(--border)', fontSize: 13, fontWeight: 700, color: 'var(--accent-strong)', fontFamily: 'inherit', textAlign: 'right' as const }} />
                     </div>
                   </div>
                 </div>
@@ -416,15 +416,15 @@ export function Landing() {
                 {(m.cardIndex ?? 0) === 0 && i === msgs.length - 1 && !secondAiResult && !regMode && !secondGoalMode && (
                   <div style={{ display: 'flex', gap: 8, marginBottom: 4, alignItems: 'flex-start' }}>
                     <button onClick={handleAddSecondGoal}
-                      style={{ flex: 1, padding: '10px', borderRadius: 12, border: '1.5px solid #EDE8DF', background: '#fff', color: '#5A4A2E', fontSize: 13, fontWeight: 600, fontFamily: 'system-ui', cursor: 'pointer' }}>
+                      style={{ flex: 1, padding: '10px', borderRadius: 12, border: '1.5px solid var(--border)', background: '#fff', color: 'var(--text-tertiary)', fontSize: 13, fontWeight: 600, fontFamily: 'system-ui', cursor: 'pointer' }}>
                       {t('landing.chat.addGoal')}
                     </button>
                     <div style={{ flex: 1.4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                       <button onClick={startRegFields}
-                        style={{ width: '100%', padding: '10px', borderRadius: 12, border: 'none', background: '#1A1612', color: '#fff', fontSize: 13, fontWeight: 700, fontFamily: 'system-ui', cursor: 'pointer' }}>
+                        style={{ width: '100%', padding: '10px', borderRadius: 12, border: 'none', background: 'var(--text-primary)', color: '#fff', fontSize: 13, fontWeight: 700, fontFamily: 'system-ui', cursor: 'pointer' }}>
                         {t('landing.chat.publish')}
                       </button>
-                      <span style={{ fontSize: 11, color: '#9A8060' }}>{t('landing.reg.publishNote')}</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{t('landing.reg.publishNote')}</span>
                     </div>
                   </div>
                 )}
@@ -433,16 +433,16 @@ export function Landing() {
               <div key={i}>
                 {m.kind === 'reg' && (i === 0 || msgs[i - 1].kind !== 'reg') && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0 12px' }}>
-                    <div style={{ flex: 1, height: 1, background: '#EDE8DF' }} />
-                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.4px', color: '#9A8060', textTransform: 'uppercase' as const }}>
+                    <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.4px', color: 'var(--text-secondary)', textTransform: 'uppercase' as const }}>
                       {t('landing.chat.accountSetup')}
                     </span>
-                    <div style={{ flex: 1, height: 1, background: '#EDE8DF' }} />
+                    <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
                   </div>
                 )}
                 <div style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start', marginBottom: 12 }}>
                   {m.role === 'assistant' && (
-                    <div style={{ width: 28, height: 28, borderRadius: '50%', background: m.kind === 'reg' ? '#1A1612' : '#EF9F27', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 8, flexShrink: 0, marginTop: 2 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: '50%', background: m.kind === 'reg' ? 'var(--text-primary)' : 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 8, flexShrink: 0, marginTop: 2 }}>
                       {m.kind === 'reg' ? <UserIcon /> : <span style={{ fontSize: 14 }}>✦</span>}
                     </div>
                   )}
@@ -450,10 +450,10 @@ export function Landing() {
                     maxWidth: '78%',
                     padding: '12px 16px',
                     borderRadius: m.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                    background: m.role === 'user' ? '#1A1612' : '#fff',
-                    color: m.role === 'user' ? '#fff' : '#1A1612',
+                    background: m.role === 'user' ? 'var(--text-primary)' : '#fff',
+                    color: m.role === 'user' ? '#fff' : 'var(--text-primary)',
                     fontSize: 15, lineHeight: 1.5,
-                    border: m.role === 'assistant' ? (m.kind === 'reg' ? '1.5px solid #1A1612' : '1.5px solid #EDE8DF') : 'none',
+                    border: m.role === 'assistant' ? (m.kind === 'reg' ? '1.5px solid var(--text-primary)' : '1.5px solid var(--border)') : 'none',
                     boxShadow: '0 1px 4px rgba(0,0,0,.06)',
                   }}>
                     {m.content}
@@ -465,12 +465,12 @@ export function Landing() {
             {/* AI typing indicator */}
             {chatLoading && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#EF9F27', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <span style={{ fontSize: 14 }}>✦</span>
                 </div>
-                <div style={{ padding: '12px 16px', borderRadius: '18px 18px 18px 4px', background: '#fff', border: '1.5px solid #EDE8DF', display: 'flex', gap: 4, alignItems: 'center' }}>
+                <div style={{ padding: '12px 16px', borderRadius: '18px 18px 18px 4px', background: '#fff', border: '1.5px solid var(--border)', display: 'flex', gap: 4, alignItems: 'center' }}>
                   {[0, 1, 2].map(i => (
-                    <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF9F27', display: 'inline-block', animation: `dotA 1.3s ease-in-out ${i * 0.2}s infinite` }} />
+                    <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', display: 'inline-block', animation: `dotA 1.3s ease-in-out ${i * 0.2}s infinite` }} />
                   ))}
                 </div>
               </div>
@@ -481,19 +481,19 @@ export function Landing() {
 
           {/* Input area */}
           {(!aiResult || regMode || secondGoalMode) && (
-            <div style={{ padding: '12px 16px 20px', background: '#F5F4F1', borderTop: '1px solid #EDE8DF' }}>
+            <div style={{ padding: '12px 16px 20px', background: 'var(--bg-page)', borderTop: '1px solid var(--border)' }}>
               {!regMode && chips.length > 0 && (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const, marginBottom: 10 }}>
                   {chips.map(c => (
                     <button key={c} onClick={() => sendUserMessage(c)}
-                      style={{ padding: '8px 16px', borderRadius: 20, background: '#fff', border: '1.5px solid #EDE8DF', fontSize: 14, color: '#1A1612', cursor: 'pointer', fontFamily: 'system-ui', fontWeight: 500 }}
-                      onMouseOver={e => { e.currentTarget.style.borderColor = '#EF9F27'; e.currentTarget.style.color = '#EF9F27' }}
-                      onMouseOut={e => { e.currentTarget.style.borderColor = '#EDE8DF'; e.currentTarget.style.color = '#1A1612' }}
+                      style={{ padding: '8px 16px', borderRadius: 20, background: '#fff', border: '1.5px solid var(--border)', fontSize: 14, color: 'var(--text-primary)', cursor: 'pointer', fontFamily: 'system-ui', fontWeight: 500 }}
+                      onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)' }}
+                      onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-primary)' }}
                     >{c}</button>
                   ))}
                 </div>
               )}
-              {error && <p style={{ fontSize: 13, color: '#DC2626', marginBottom: 8 }}>{error}</p>}
+              {error && <p style={{ fontSize: 13, color: 'var(--danger)', marginBottom: 8 }}>{error}</p>}
               <form onSubmit={e => { e.preventDefault(); regMode ? handleRegInput() : sendUserMessage(chatInput) }} style={{ display: 'flex', gap: 8 }}>
                 <input
                   key={regMode ? `reg-${regStep}` : 'chat'}
@@ -503,14 +503,14 @@ export function Landing() {
                   placeholder={regMode ? REG_QUESTIONS[regStep]?.placeholder : t('landing.chat.inputPlaceholder')}
                   autoFocus={regMode}
                   autoComplete={regMode && REG_QUESTIONS[regStep]?.key === 'password' ? 'new-password' : regMode && REG_QUESTIONS[regStep]?.key === 'email' ? 'email' : 'off'}
-                  style={{ flex: 1, padding: '12px 16px', borderRadius: 12, border: '1.5px solid #EDE8DF', fontSize: 15, outline: 'none', fontFamily: 'inherit', background: '#fff' }}
-                  onFocus={e => { e.currentTarget.style.borderColor = '#EF9F27' }}
-                  onBlur={e => { e.currentTarget.style.borderColor = '#EDE8DF' }}
+                  style={{ flex: 1, padding: '12px 16px', borderRadius: 12, border: '1.5px solid var(--border)', fontSize: 15, outline: 'none', fontFamily: 'inherit', background: '#fff' }}
+                  onFocus={e => { e.currentTarget.style.borderColor = 'var(--accent)' }}
+                  onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
                 />
                 <button
                   type="submit"
                   disabled={!chatInput.trim() || chatLoading || authLoading}
-                  style={{ padding: '12px 16px', borderRadius: 12, background: '#1A1612', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 18, opacity: !chatInput.trim() || chatLoading || authLoading ? 0.4 : 1 }}
+                  style={{ padding: '12px 16px', borderRadius: 12, background: 'var(--text-primary)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 18, opacity: !chatInput.trim() || chatLoading || authLoading ? 0.4 : 1 }}
                 >↑</button>
               </form>
             </div>

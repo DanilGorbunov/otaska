@@ -40,12 +40,14 @@ export const listOpen = query({
     budgetMax: v.optional(v.number()),
   },
   handler: async (ctx, { city, intentType, category, budgetMin, budgetMax }) => {
+    const userId = await getAuthUserId(ctx)
     const results = await ctx.db
       .query("entries")
       .withIndex("by_status", (q) => q.eq("status", "open"))
       .order("desc")
       .take(100)
     const filtered = results.filter((e) => {
+      if (userId && e.clientId === userId) return false
       if (intentType && e.intentType !== intentType) return false
       if (category && e.category !== category) return false
       if (city && e.city && !e.city.toLowerCase().includes(city.toLowerCase())) return false

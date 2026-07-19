@@ -19,7 +19,7 @@ export function BellButton() {
       padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center',
       position: 'relative', WebkitTapHighlightColor: 'transparent',
     }}>
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#007AFF" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-primary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
         <path d="M13.73 21a2 2 0 0 1-3.46 0" />
       </svg>
@@ -27,7 +27,7 @@ export function BellButton() {
         <div style={{
           position: 'absolute', top: 1, right: 1,
           width: 14, height: 14, borderRadius: '50%',
-          background: '#FF3B30', border: '1.5px solid rgba(242,242,247,.94)',
+          background: 'var(--danger)', border: '1.5px solid var(--bg-page-blur)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 8, fontWeight: 700, color: '#fff',
         }}>{unread}</div>
@@ -39,7 +39,7 @@ export function BellButton() {
 function ChevronLeft() {
   return (
     <svg width="12" height="20" viewBox="0 0 12 20" fill="none">
-      <path d="M10 2L2 10L10 18" stroke="#007AFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10 2L2 10L10 18" stroke="var(--text-primary)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
@@ -51,9 +51,9 @@ export function NavBar({ title, backTitle = 'Назад', showBack = true, showB
   return (
     <div style={{
       position: 'sticky', top: 0, zIndex: 60,
-      background: 'rgba(242,242,247,.94)',
+      background: 'var(--bg-page-blur)',
       backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-      borderBottom: '0.5px solid rgba(60,60,67,.18)',
+      borderBottom: '0.5px solid var(--hairline)',
       height: 44,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '0 8px',
@@ -65,7 +65,7 @@ export function NavBar({ title, backTitle = 'Назад', showBack = true, showB
             position: 'absolute', left: 4,
             background: 'none', border: 'none', cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: 3,
-            color: '#007AFF', fontSize: 17, padding: '0 8px', height: 44,
+            color: 'var(--text-primary)', fontSize: 17, padding: '0 8px', height: 44,
             fontFamily: 'inherit',
             WebkitTapHighlightColor: 'transparent',
           }}
@@ -75,7 +75,7 @@ export function NavBar({ title, backTitle = 'Назад', showBack = true, showB
         </button>
       )}
 
-      <span style={{ fontSize: 17, fontWeight: 600, color: '#000', letterSpacing: '-.3px' }}>
+      <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-.3px' }}>
         {title}
       </span>
 

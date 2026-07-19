@@ -7,7 +7,7 @@ const tabs = [
   {
     path: '/app', label: 'Записи',
     icon: (active: boolean) => (
-      <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke={active ? '#000' : '#8E8E93'} strokeWidth="2" strokeLinecap="round">
+      <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke={active ? 'var(--text-primary)' : 'var(--text-secondary)'} strokeWidth="2" strokeLinecap="round">
         <rect x="3" y="3" width="18" height="18" rx="3" />
         <path d="M7 8h10M7 12h10M7 16h6" />
       </svg>
@@ -16,7 +16,7 @@ const tabs = [
   {
     path: '/app/browse', label: 'Знайти',
     icon: (active: boolean) => (
-      <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke={active ? '#000' : '#8E8E93'} strokeWidth="2" strokeLinecap="round">
+      <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke={active ? 'var(--text-primary)' : 'var(--text-secondary)'} strokeWidth="2" strokeLinecap="round">
         <circle cx="11" cy="11" r="7" />
         <path d="M21 21l-4-4" />
       </svg>
@@ -26,7 +26,7 @@ const tabs = [
   {
     path: '/app/chat', label: 'Чат',
     icon: (active: boolean) => (
-      <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke={active ? '#000' : '#8E8E93'} strokeWidth="2" strokeLinecap="round">
+      <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke={active ? 'var(--text-primary)' : 'var(--text-secondary)'} strokeWidth="2" strokeLinecap="round">
         <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
       </svg>
     ),
@@ -34,7 +34,7 @@ const tabs = [
   {
     path: '/app/profile', label: 'Профіль',
     icon: (active: boolean) => (
-      <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke={active ? '#000' : '#8E8E93'} strokeWidth="2" strokeLinecap="round">
+      <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke={active ? 'var(--text-primary)' : 'var(--text-secondary)'} strokeWidth="2" strokeLinecap="round">
         <circle cx="12" cy="8" r="4" />
         <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
       </svg>
@@ -108,9 +108,9 @@ export function TabBar() {
     <div className="tabbar" style={{
       position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
       width: '100%', maxWidth: 430, zIndex: 50,
-      background: 'rgba(249,249,249,.94)',
+      background: 'var(--bg-page-blur)',
       backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-      borderTop: '0.5px solid rgba(60,60,67,.18)',
+      borderTop: '0.5px solid var(--hairline)',
       height: 60, display: 'flex', alignItems: 'center', padding: '0 4px 4px',
     }}>
       {tabs.map((tab, i) => {
@@ -119,7 +119,7 @@ export function TabBar() {
             <div key="fab" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', marginTop: -14 }}
               onClick={openNew}>
               <div style={{
-                width: 50, height: 50, borderRadius: '50%', background: '#111111',
+                width: 50, height: 50, borderRadius: '50%', background: 'var(--dark)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 boxShadow: '0 4px 16px rgba(0,0,0,.25)',
               }}>
@@ -142,12 +142,12 @@ export function TabBar() {
                 <div style={{
                   position: 'absolute', top: 0, right: -2,
                   width: 8, height: 8, borderRadius: '50%',
-                  background: '#EF9F27',
-                  border: '1.5px solid rgba(249,249,249,.94)',
+                  background: 'var(--accent)',
+                  border: '1.5px solid var(--bg-page-blur)',
                 }} />
               )}
             </div>
-            <span style={{ fontSize: 10, fontWeight: 600, color: active ? '#000' : '#8E8E93' }}>{tab.label}</span>
+            <span style={{ fontSize: 10, fontWeight: 600, color: active ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{tab.label}</span>
           </div>
         )
       })}

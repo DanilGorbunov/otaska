@@ -17,8 +17,8 @@ export function LanguageSwitcher() {
       {SUPPORTED_LOCALES.map(l => (
         <button key={l.code} onClick={() => setLocale(l.code)} style={{
           padding: '7px 14px', borderRadius: 99, border: 'none', cursor: 'pointer',
-          background: i18n.language === l.code ? '#1A1612' : '#fff',
-          color: i18n.language === l.code ? '#fff' : '#9A8060',
+          background: i18n.language === l.code ? 'var(--text-primary)' : '#fff',
+          color: i18n.language === l.code ? '#fff' : 'var(--text-secondary)',
           fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
           boxShadow: i18n.language === l.code ? '0 2px 8px rgba(0,0,0,.2)' : '0 1px 4px rgba(0,0,0,.07)',
         }}>

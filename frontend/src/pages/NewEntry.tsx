@@ -23,13 +23,13 @@ function TaskProviderIndicator({ taskTitle, city }: { taskTitle: string; city: s
   const results = useQuery(api.users.searchProvidersForTask, { taskTitle, city: city || undefined })
 
   if (results === undefined) {
-    return <span style={{ fontSize: 11, color: '#EF9F27' }}>🟡 Шукаємо...</span>
+    return <span style={{ fontSize: 11, color: 'var(--accent)' }}>🟡 Шукаємо...</span>
   }
   if (results.length === 0) {
-    return <span style={{ fontSize: 11, color: '#9A8060' }}>Немає майстрів — опублікуємо запит</span>
+    return <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Немає майстрів — опублікуємо запит</span>
   }
   return (
-    <span style={{ fontSize: 11, color: '#22C55E', fontWeight: 600 }}>
+    <span style={{ fontSize: 11, color: 'var(--success)', fontWeight: 600 }}>
       ✅ Знайдено {results.length} {results.length === 1 ? 'майстра' : 'майстри'}
     </span>
   )
@@ -210,12 +210,12 @@ export function NewEntry() {
 
       <div style={{
         position: 'relative', width: '100%', maxWidth: 430, zIndex: 90,
-        background: '#F9F9F9', borderRadius: '24px 24px 0 0',
+        background: 'var(--bg-field)', borderRadius: '24px 24px 0 0',
         maxHeight: '92dvh', overflowY: 'auto',
         boxShadow: '0 -8px 48px rgba(0,0,0,.22)',
         animation: 'sheetUp 0.34s cubic-bezier(0.25,0.46,0.45,0.94) both',
       }}>
-        <div style={{ width: 36, height: 4, borderRadius: 99, background: '#D1D1D6', margin: '12px auto 0' }} />
+        <div style={{ width: 36, height: 4, borderRadius: 99, background: 'var(--border-strong)', margin: '12px auto 0' }} />
 
         <div style={{ padding: '16px 16px 48px' }}>
 
@@ -229,8 +229,8 @@ export function NewEntry() {
               width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               {parsed
-                ? <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#3C3C43" strokeWidth="2.5" strokeLinecap="round"><path d="M15 18l-6-6 6-6" /></svg>
-                : <svg width="12" height="12" fill="none" viewBox="0 0 12 12" stroke="#3C3C43" strokeWidth="2" strokeLinecap="round"><path d="M1 1l10 10M11 1L1 11" /></svg>
+                ? <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="var(--text-secondary)" strokeWidth="2.5" strokeLinecap="round"><path d="M15 18l-6-6 6-6" /></svg>
+                : <svg width="12" height="12" fill="none" viewBox="0 0 12 12" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round"><path d="M1 1l10 10M11 1L1 11" /></svg>
               }
             </button>
           </div>
@@ -242,7 +242,7 @@ export function NewEntry() {
                 <button key={m} onClick={() => setMode(m)} style={{
                   flex: 1, padding: '7px 0', borderRadius: 8, border: 'none', cursor: 'pointer',
                   background: mode === m ? '#fff' : 'transparent',
-                  color: mode === m ? '#000' : '#8E8E93',
+                  color: mode === m ? 'var(--text-primary)' : 'var(--text-secondary)',
                   fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
                   boxShadow: mode === m ? '0 1px 3px rgba(0,0,0,.12)' : 'none',
                   transition: 'all .15s',
@@ -256,15 +256,15 @@ export function NewEntry() {
           {/* ── ENTRY MODE ── */}
           {mode === 'entry' && !parsed && (
             <>
-              <div style={{ background: '#fff', borderRadius: 18, padding: '14px 16px', marginBottom: 12, border: text.length > 0 ? '1.5px solid #111' : '1.5px solid transparent', transition: 'border-color .2s', boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
+              <div style={{ background: '#fff', borderRadius: 'var(--radius-lg)', padding: '14px 16px', marginBottom: 12, border: text.length > 0 ? '1.5px solid var(--dark)' : '1.5px solid transparent', transition: 'border-color .2s', boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
                 <textarea
                   autoFocus
                   value={text}
                   onChange={e => setText(e.target.value)}
                   placeholder={"Напиши що тобі потрібно або що ти пропонуєш...\n\nНаприклад: «потрібен електрик на п'ятницю» або «роблю сантехніку в Братиславі»"}
-                  style={{ width: '100%', minHeight: 110, border: 'none', outline: 'none', resize: 'none', fontSize: 16, lineHeight: 1.55, color: '#000', background: 'transparent', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                  style={{ width: '100%', minHeight: 110, border: 'none', outline: 'none', resize: 'none', fontSize: 16, lineHeight: 1.55, color: 'var(--text-primary)', background: 'transparent', fontFamily: 'inherit', boxSizing: 'border-box' }}
                 />
-                <div style={{ fontSize: 12, color: '#C7C7CC', marginTop: 6 }}>{text.length}/500</div>
+                <div style={{ fontSize: 12, color: 'var(--border-strong)', marginTop: 6 }}>{text.length}/500</div>
               </div>
 
               {entryPhotoPreview && (
@@ -279,23 +279,23 @@ export function NewEntry() {
               <label style={{ display: 'block', marginBottom: 10 }}>
                 <input type="file" accept="image/*" style={{ display: 'none' }}
                   onChange={e => { const f = e.target.files?.[0]; if (f) handleEntryPhotoSelect(f) }} />
-                <div style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid #EDE8DF', textAlign: 'center', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#5A4A2E', background: '#fff' }}>
+                <div style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid var(--border)', textAlign: 'center', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', background: '#fff' }}>
                   {entryPhotoUploading ? '⏳ Завантажуємо...' : entryPhotoPreview ? '📷 Змінити фото' : '📷 Додати фото (необов\'язково)'}
                 </div>
               </label>
 
-              {error && <p style={{ fontSize: 13, color: '#DC2626', marginBottom: 10 }}>{error}</p>}
+              {error && <p style={{ fontSize: 13, color: 'var(--danger)', marginBottom: 10 }}>{error}</p>}
               <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
-                <button onClick={() => navigate(-1)} style={{ flex: 1, padding: 14, borderRadius: 14, border: 'none', cursor: 'pointer', background: 'rgba(118,118,128,.12)', fontSize: 15, fontWeight: 500, color: '#3C3C43', fontFamily: 'inherit' }}>
+                <button onClick={() => navigate(-1)} style={{ flex: 1, padding: 14, borderRadius: 14, border: 'none', cursor: 'pointer', background: 'rgba(118,118,128,.12)', fontSize: 15, fontWeight: 500, color: 'var(--text-secondary)', fontFamily: 'inherit' }}>
                   Скасувати
                 </button>
                 <button onClick={() => handleEntrySubmit(false)} disabled={!text.trim() || submitting || entryPhotoUploading}
-                  style={{ flex: 2, padding: 14, borderRadius: 14, border: 'none', cursor: text.trim() ? 'pointer' : 'not-allowed', background: text.trim() ? '#111' : '#C7C7CC', fontSize: 17, fontWeight: 700, color: '#fff', fontFamily: 'inherit' }}>
+                  style={{ flex: 2, padding: 14, borderRadius: 14, border: 'none', cursor: text.trim() ? 'pointer' : 'not-allowed', background: text.trim() ? 'var(--dark)' : 'var(--border-strong)', fontSize: 17, fontWeight: 700, color: '#fff', fontFamily: 'inherit' }}>
                   {submitting ? 'Зберігаємо...' : 'Опублікувати →'}
                 </button>
               </div>
               <button onClick={() => handleEntrySubmit(true)} disabled={!text.trim() || submitting || entryPhotoUploading}
-                style={{ width: '100%', padding: '12px 14px', borderRadius: 14, border: '1.5px solid #EDE8DF', cursor: text.trim() ? 'pointer' : 'not-allowed', background: '#fff', fontSize: 14, fontWeight: 500, color: text.trim() ? '#5A4A2E' : '#C7C7CC', fontFamily: 'inherit' }}>
+                style={{ width: '100%', padding: '12px 14px', borderRadius: 14, border: '1.5px solid var(--border)', cursor: text.trim() ? 'pointer' : 'not-allowed', background: '#fff', fontSize: 14, fontWeight: 500, color: text.trim() ? 'var(--text-tertiary)' : 'var(--border-strong)', fontFamily: 'inherit' }}>
                 🔒 Зберегти як чернетку
               </button>
             </>
@@ -304,11 +304,11 @@ export function NewEntry() {
           {/* ── PHOTO MODE ── */}
           {mode === 'photo' && (
             <>
-              <div style={{ background: '#fff', borderRadius: 18, padding: '14px 16px', marginBottom: 12, border: '1.5px solid #EDE8DF', boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
+              <div style={{ background: '#fff', borderRadius: 'var(--radius-lg)', padding: '14px 16px', marginBottom: 12, border: '1.5px solid var(--border)', boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
                 {photoPreview ? (
                   <img src={photoPreview} alt="" style={{ width: '100%', maxHeight: 220, objectFit: 'cover', borderRadius: 12, marginBottom: 10 }} />
                 ) : (
-                  <div style={{ textAlign: 'center', padding: '24px 0', color: '#9A8060' }}>
+                  <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-secondary)' }}>
                     <div style={{ fontSize: 32, marginBottom: 8 }}>📷</div>
                     <div style={{ fontSize: 13 }}>Сфотографуй проблему — протікання, тріщину, поламку</div>
                   </div>
@@ -316,33 +316,33 @@ export function NewEntry() {
                 <label style={{ display: 'block' }}>
                   <input type="file" accept="image/*" style={{ display: 'none' }}
                     onChange={e => { const f = e.target.files?.[0]; if (f) handlePhotoSelect(f) }} />
-                  <div style={{ width: '100%', padding: 12, borderRadius: 12, border: '1.5px solid #EDE8DF', textAlign: 'center', cursor: 'pointer', fontSize: 14, fontWeight: 600, color: '#1A1612' }}>
+                  <div style={{ width: '100%', padding: 12, borderRadius: 12, border: '1.5px solid var(--border)', textAlign: 'center', cursor: 'pointer', fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
                     {photoPreview ? 'Обрати інше фото' : 'Обрати фото'}
                   </div>
                 </label>
               </div>
 
               {diagnosing && (
-                <div style={{ textAlign: 'center', padding: 16, color: '#9A8060', fontSize: 13 }}>✦ AI аналізує фото...</div>
+                <div style={{ textAlign: 'center', padding: 16, color: 'var(--text-secondary)', fontSize: 13 }}>✦ AI аналізує фото...</div>
               )}
 
               {diagnosis && (
-                <div style={{ background: '#fff', borderRadius: 18, padding: '16px', marginBottom: 12, border: '1.5px solid #EDE8DF' }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Діагноз AI</div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: '#1A1612', marginBottom: 4 }}>{diagnosis.category}</div>
-                  <div style={{ fontSize: 13, color: '#9A8060', marginBottom: 8 }}>{diagnosis.urgency}</div>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: '#EF9F27' }}>€{diagnosis.priceMin}–{diagnosis.priceMax}</div>
+                <div style={{ background: '#fff', borderRadius: 'var(--radius-lg)', padding: '16px', marginBottom: 12, border: '1.5px solid var(--border)' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Діагноз AI</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>{diagnosis.category}</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>{diagnosis.urgency}</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--accent)' }}>€{diagnosis.priceMin}–{diagnosis.priceMax}</div>
                 </div>
               )}
 
-              {error && <p style={{ fontSize: 13, color: '#DC2626', marginBottom: 10 }}>{error}</p>}
+              {error && <p style={{ fontSize: 13, color: 'var(--danger)', marginBottom: 10 }}>{error}</p>}
 
               <div style={{ display: 'flex', gap: 10 }}>
-                <button onClick={() => navigate(-1)} style={{ flex: 1, padding: 14, borderRadius: 14, border: 'none', cursor: 'pointer', background: 'rgba(118,118,128,.12)', fontSize: 15, fontWeight: 500, color: '#3C3C43', fontFamily: 'inherit' }}>
+                <button onClick={() => navigate(-1)} style={{ flex: 1, padding: 14, borderRadius: 14, border: 'none', cursor: 'pointer', background: 'rgba(118,118,128,.12)', fontSize: 15, fontWeight: 500, color: 'var(--text-secondary)', fontFamily: 'inherit' }}>
                   Скасувати
                 </button>
                 <button onClick={handlePhotoSubmit} disabled={!diagnosis || submitting}
-                  style={{ flex: 2, padding: 14, borderRadius: 14, border: 'none', cursor: diagnosis ? 'pointer' : 'not-allowed', background: diagnosis ? '#111' : '#C7C7CC', fontSize: 17, fontWeight: 700, color: '#fff', fontFamily: 'inherit' }}>
+                  style={{ flex: 2, padding: 14, borderRadius: 14, border: 'none', cursor: diagnosis ? 'pointer' : 'not-allowed', background: diagnosis ? 'var(--dark)' : 'var(--border-strong)', fontSize: 17, fontWeight: 700, color: '#fff', fontFamily: 'inherit' }}>
                   {submitting ? 'Зберігаємо...' : 'Опублікувати →'}
                 </button>
               </div>
@@ -352,40 +352,40 @@ export function NewEntry() {
           {/* ── PROJECT MODE STEP 1 — textarea ── */}
           {mode === 'project' && !parsed && (
             <>
-              <div style={{ background: '#fff', borderRadius: 18, padding: '14px 16px', marginBottom: 10, boxShadow: '0 2px 12px rgba(0,0,0,.06)', border: '1.5px solid #EDE8DF' }}>
+              <div style={{ background: '#fff', borderRadius: 'var(--radius-lg)', padding: '14px 16px', marginBottom: 10, boxShadow: '0 2px 12px rgba(0,0,0,.06)', border: '1.5px solid var(--border)' }}>
                 <input
                   autoFocus
                   value={projectTitle}
                   onChange={e => setProjectTitle(e.target.value)}
                   placeholder="Назва проєкту"
-                  style={{ width: '100%', border: 'none', outline: 'none', fontSize: 17, fontWeight: 700, fontFamily: 'inherit', background: 'transparent', marginBottom: 10, boxSizing: 'border-box', color: '#1A1612' }}
+                  style={{ width: '100%', border: 'none', outline: 'none', fontSize: 17, fontWeight: 700, fontFamily: 'inherit', background: 'transparent', marginBottom: 10, boxSizing: 'border-box', color: 'var(--text-primary)' }}
                 />
-                <div style={{ height: 1, background: '#F0EBE3', marginBottom: 10 }} />
+                <div style={{ height: 1, background: 'var(--border)', marginBottom: 10 }} />
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 14, color: '#9A8060', flexShrink: 0 }}>📍</span>
+                  <span style={{ fontSize: 14, color: 'var(--text-secondary)', flexShrink: 0 }}>📍</span>
                   <input
                     value={projectCity}
                     onChange={e => setProjectCity(e.target.value)}
                     placeholder="Місто"
-                    style={{ flex: 1, border: 'none', outline: 'none', fontSize: 14, fontFamily: 'inherit', background: 'transparent', color: '#1A1612' }}
+                    style={{ flex: 1, border: 'none', outline: 'none', fontSize: 14, fontFamily: 'inherit', background: 'transparent', color: 'var(--text-primary)' }}
                   />
                 </div>
               </div>
-              <div style={{ background: '#fff', borderRadius: 18, padding: '14px 16px', marginBottom: 12, border: projectText.length > 0 ? '1.5px solid #111' : '1.5px solid #EDE8DF', transition: 'border-color .2s', boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
+              <div style={{ background: '#fff', borderRadius: 'var(--radius-lg)', padding: '14px 16px', marginBottom: 12, border: projectText.length > 0 ? '1.5px solid var(--dark)' : '1.5px solid var(--border)', transition: 'border-color .2s', boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
                 <textarea
                   value={projectText}
                   onChange={e => setProjectText(e.target.value)}
                   placeholder={'Опишіть роботи та матеріали...\n\nНаприклад: «Малярні та штукатурні роботи, великий обсяг щебня та піску, сантехніка у роздягальнях»'}
-                  style={{ width: '100%', minHeight: 110, border: 'none', outline: 'none', resize: 'none', fontSize: 15, lineHeight: 1.55, color: '#000', background: 'transparent', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                  style={{ width: '100%', minHeight: 110, border: 'none', outline: 'none', resize: 'none', fontSize: 15, lineHeight: 1.55, color: 'var(--text-primary)', background: 'transparent', fontFamily: 'inherit', boxSizing: 'border-box' }}
                 />
               </div>
-              {error && <p style={{ fontSize: 13, color: '#DC2626', marginBottom: 10 }}>{error}</p>}
+              {error && <p style={{ fontSize: 13, color: 'var(--danger)', marginBottom: 10 }}>{error}</p>}
               <div style={{ display: 'flex', gap: 10 }}>
-                <button onClick={() => navigate(-1)} style={{ flex: 1, padding: 14, borderRadius: 14, border: 'none', cursor: 'pointer', background: 'rgba(118,118,128,.12)', fontSize: 15, fontWeight: 500, color: '#3C3C43', fontFamily: 'inherit' }}>
+                <button onClick={() => navigate(-1)} style={{ flex: 1, padding: 14, borderRadius: 14, border: 'none', cursor: 'pointer', background: 'rgba(118,118,128,.12)', fontSize: 15, fontWeight: 500, color: 'var(--text-secondary)', fontFamily: 'inherit' }}>
                   Скасувати
                 </button>
                 <button onClick={handleParseProject} disabled={(!projectText.trim() && !projectTitle.trim()) || parsing}
-                  style={{ flex: 2, padding: 14, borderRadius: 14, border: 'none', cursor: (projectText.trim() || projectTitle.trim()) ? 'pointer' : 'not-allowed', background: (projectText.trim() || projectTitle.trim()) ? '#111' : '#C7C7CC', fontSize: 17, fontWeight: 700, color: '#fff', fontFamily: 'inherit' }}>
+                  style={{ flex: 2, padding: 14, borderRadius: 14, border: 'none', cursor: (projectText.trim() || projectTitle.trim()) ? 'pointer' : 'not-allowed', background: (projectText.trim() || projectTitle.trim()) ? 'var(--dark)' : 'var(--border-strong)', fontSize: 17, fontWeight: 700, color: '#fff', fontFamily: 'inherit' }}>
                   {parsing ? '✦ Аналізую...' : '✦ Далі →'}
                 </button>
               </div>
@@ -396,31 +396,31 @@ export function NewEntry() {
           {parsed && (
             <>
               {/* Project info */}
-              <div style={{ background: '#fff', borderRadius: 14, padding: '12px 16px', marginBottom: 16, border: '1.5px solid #EDE8DF' }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Проєкт</div>
+              <div style={{ background: '#fff', borderRadius: 14, padding: '12px 16px', marginBottom: 16, border: '1.5px solid var(--border)' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Проєкт</div>
                 <input value={parsed.projectTitle} onChange={e => setParsed(p => p ? { ...p, projectTitle: e.target.value } : p)}
                   style={{ width: '100%', border: 'none', outline: 'none', fontSize: 16, fontWeight: 700, fontFamily: 'inherit', background: 'transparent', marginBottom: 4, boxSizing: 'border-box' }} />
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 13, color: '#9A8060' }}>📍</span>
+                  <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>📍</span>
                   <input value={parsed.projectCity} onChange={e => setParsed(p => p ? { ...p, projectCity: e.target.value } : p)}
-                    style={{ border: 'none', outline: 'none', fontSize: 13, color: '#9A8060', fontFamily: 'inherit', background: 'transparent' }} />
+                    style={{ border: 'none', outline: 'none', fontSize: 13, color: 'var(--text-secondary)', fontFamily: 'inherit', background: 'transparent' }} />
                 </div>
               </div>
 
               {/* Service tasks */}
               {parsed.tasks.filter(t => t.type === 'service').length > 0 && (
                 <div style={{ marginBottom: 12 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
                     🔍 Пошук виконавців
                   </div>
                   {parsed.tasks.map((t, i) => t.type !== 'service' ? null : (
                     <div key={i} onClick={() => toggleTask(i)}
-                      style={{ background: '#fff', borderRadius: 12, padding: '12px 14px', marginBottom: 8, border: `1.5px solid ${t.selected ? '#1A1612' : '#EDE8DF'}`, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <div style={{ width: 22, height: 22, borderRadius: 6, border: `2px solid ${t.selected ? '#1A1612' : '#C0B49A'}`, background: t.selected ? '#1A1612' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      style={{ background: '#fff', borderRadius: 12, padding: '12px 14px', marginBottom: 8, border: `1.5px solid ${t.selected ? 'var(--text-primary)' : 'var(--border)'}`, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{ width: 22, height: 22, borderRadius: 6, border: `2px solid ${t.selected ? 'var(--text-primary)' : 'var(--text-dim)'}`, background: t.selected ? 'var(--text-primary)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         {t.selected && <span style={{ color: '#fff', fontSize: 13, fontWeight: 800 }}>✓</span>}
                       </div>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: '#1A1612', marginBottom: 3 }}>{t.title}</div>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 3 }}>{t.title}</div>
                         <TaskProviderIndicator taskTitle={t.title} city={parsed.projectCity} />
                       </div>
                     </div>
@@ -431,17 +431,17 @@ export function NewEntry() {
               {/* Material tasks */}
               {parsed.tasks.filter(t => t.type === 'material').length > 0 && (
                 <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
                     📦 Пошук матеріалів
                   </div>
                   {parsed.tasks.map((t, i) => t.type !== 'material' ? null : (
                     <div key={i} onClick={() => toggleTask(i)}
-                      style={{ background: '#fff', borderRadius: 12, padding: '12px 14px', marginBottom: 8, border: `1.5px solid ${t.selected ? '#1A1612' : '#EDE8DF'}`, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <div style={{ width: 22, height: 22, borderRadius: 6, border: `2px solid ${t.selected ? '#1A1612' : '#C0B49A'}`, background: t.selected ? '#1A1612' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      style={{ background: '#fff', borderRadius: 12, padding: '12px 14px', marginBottom: 8, border: `1.5px solid ${t.selected ? 'var(--text-primary)' : 'var(--border)'}`, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{ width: 22, height: 22, borderRadius: 6, border: `2px solid ${t.selected ? 'var(--text-primary)' : 'var(--text-dim)'}`, background: t.selected ? 'var(--text-primary)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         {t.selected && <span style={{ color: '#fff', fontSize: 13, fontWeight: 800 }}>✓</span>}
                       </div>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: '#1A1612', marginBottom: 3 }}>{t.title}</div>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 3 }}>{t.title}</div>
                         <TaskProviderIndicator taskTitle={t.title} city={parsed.projectCity} />
                       </div>
                     </div>
@@ -449,10 +449,10 @@ export function NewEntry() {
                 </div>
               )}
 
-              {error && <p style={{ fontSize: 13, color: '#DC2626', marginBottom: 10 }}>{error}</p>}
+              {error && <p style={{ fontSize: 13, color: 'var(--danger)', marginBottom: 10 }}>{error}</p>}
 
               <button onClick={handleProjectCreate} disabled={submitting}
-                style={{ width: '100%', padding: 16, borderRadius: 14, border: 'none', cursor: 'pointer', background: '#1A1612', fontSize: 16, fontWeight: 700, color: '#fff', fontFamily: 'inherit' }}>
+                style={{ width: '100%', padding: 16, borderRadius: 14, border: 'none', cursor: 'pointer', background: 'var(--text-primary)', fontSize: 16, fontWeight: 700, color: '#fff', fontFamily: 'inherit' }}>
                 {submitting ? 'Створюємо...' : `🚀 Створити проєкт + ${parsed.tasks.filter(t => t.selected).length} тасків`}
               </button>
             </>
