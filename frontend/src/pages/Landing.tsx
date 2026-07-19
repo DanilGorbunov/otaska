@@ -276,6 +276,9 @@ export function Landing() {
             }}>
               {i18n.language === 'uk' ? 'EN' : 'UA'}
             </button>
+            <button onClick={() => navigate('/register')} style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'system-ui' }}>
+              {t('landing.register')}
+            </button>
             <button onClick={() => navigate('/login')} style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'system-ui' }}>
               {t('landing.login')}
             </button>

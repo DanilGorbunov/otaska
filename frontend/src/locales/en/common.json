@@ -3,6 +3,7 @@
   "common": { "loading": "Loading...", "cancel": "Cancel", "save": "Save", "search": "Search..." },
   "landing": {
     "login": "Log in",
+    "register": "Sign up",
     "step": { "write": "WRITE", "ai": "AI", "signup": "SIGN UP" },
     "hero": {
       "title1": "Just write",

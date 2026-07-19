@@ -10,6 +10,7 @@ import { Profile } from './pages/Profile'
 import { ProviderProfile } from './pages/ProviderProfile'
 import { ChatConversation } from './pages/ChatConversation'
 import { Login } from './pages/Auth/Login'
+import { Register } from './pages/Auth/Register'
 import { Landing } from './pages/Landing'
 
 function GuestOnly({ children }: { children: React.ReactNode }) {
@@ -37,7 +38,7 @@ function RouterContent() {
       <Routes location={bg || location}>
         <Route path="/" element={<GuestOnly><Landing /></GuestOnly>} />
         <Route path="/login" element={<GuestOnly><Login /></GuestOnly>} />
-        <Route path="/register" element={<Navigate to="/" replace />} />
+        <Route path="/register" element={<GuestOnly><Register /></GuestOnly>} />
         <Route path="/app" element={<AuthRequired><AppShell /></AuthRequired>}>
           <Route index element={<Dashboard />} />
           <Route path="browse" element={<Browse />} />
