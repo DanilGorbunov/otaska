@@ -5,6 +5,7 @@ import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
 import { useAuthActions } from '@convex-dev/auth/react'
 import { LanguageSwitcher } from '../components/LanguageSwitcher'
+import { compressImage, type CompressPreset } from '../lib/image'
 
 const CATEGORIES = ['Електрика', 'Сантехніка', 'Ремонт', 'Малярство', 'Плитка', 'Теслярство', 'Прибирання', 'Переїзд', 'Ландшафт', 'Інше']
 const SKILL_OPTIONS = ['Електрика', 'Сантехніка', 'Малярство', 'Штукатурка', 'Плитка', 'Теслярство', 'Зварювання', 'Гіпсокартон', 'Підлога', 'Покрівля', 'Прибирання', 'Переїзд', 'Ландшафт', 'Будівництво']
@@ -139,9 +140,10 @@ export function Profile() {
     } finally { setSaving(false) }
   }
 
-  const uploadFile = async (file: File): Promise<Id<'_storage'>> => {
+  const uploadFile = async (file: File, preset: CompressPreset): Promise<Id<'_storage'>> => {
+    const compressed = await compressImage(file, preset)
     const url = await generateUploadUrl()
-    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': file.type }, body: file })
+    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': compressed.type }, body: compressed })
     const { storageId } = await res.json() as { storageId: Id<'_storage'> }
     return storageId
   }
@@ -176,7 +178,7 @@ export function Profile() {
             </>
         }
         <div style={{ position: 'absolute', bottom: 12, right: 12 }}>
-          <UploadButton label="📷 Обкладинка" onUpload={async f => { const id = await uploadFile(f); await saveCover({ storageId: id }) }} />
+          <UploadButton label="📷 Обкладинка" onUpload={async f => { const id = await uploadFile(f, 'cover'); await saveCover({ storageId: id }) }} />
         </div>
       </div>
 
@@ -188,7 +190,7 @@ export function Profile() {
               {avatarUrl ? <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initials}
             </div>
             <div style={{ position: 'absolute', bottom: 0, right: -4 }}>
-              <UploadButton label="📷" onUpload={async f => { const id = await uploadFile(f); await saveAvatar({ storageId: id }) }} small />
+              <UploadButton label="📷" onUpload={async f => { const id = await uploadFile(f, 'avatar'); await saveAvatar({ storageId: id }) }} small />
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, paddingBottom: 8 }}>
@@ -308,7 +310,7 @@ export function Profile() {
               + Додати
             </button>
             <input ref={portfolioRef} type="file" accept="image/*" style={{ display: 'none' }}
-              onChange={async e => { const f = e.target.files?.[0]; if (!f) return; const id = await uploadFile(f); await addPortfolioItem({ storageId: id }); e.target.value = '' }} />
+              onChange={async e => { const f = e.target.files?.[0]; if (!f) return; const id = await uploadFile(f, 'portfolio'); await addPortfolioItem({ storageId: id }); e.target.value = '' }} />
           </div>
 
           {portfolioUrls.length === 0 ? (

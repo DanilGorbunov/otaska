@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useMutation, useAction, useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
+import { compressImage } from '../lib/image'
 
 type ParsedTask = {
   title: string
@@ -141,11 +142,12 @@ export function NewEntry() {
   }
 
   const handleEntryPhotoSelect = async (file: File) => {
-    setEntryPhotoPreview(URL.createObjectURL(file))
     setEntryPhotoUploading(true)
     try {
+      const compressed = await compressImage(file, 'task')
+      setEntryPhotoPreview(URL.createObjectURL(compressed))
       const uploadUrl = await generateUploadUrl()
-      const res = await fetch(uploadUrl, { method: 'POST', headers: { 'Content-Type': file.type }, body: file })
+      const res = await fetch(uploadUrl, { method: 'POST', headers: { 'Content-Type': compressed.type }, body: compressed })
       const { storageId } = await res.json() as { storageId: Id<'_storage'> }
       setEntryPhotoStorageId(storageId)
     } catch (e) {
@@ -156,13 +158,14 @@ export function NewEntry() {
   }
 
   const handlePhotoSelect = async (file: File) => {
-    setPhotoPreview(URL.createObjectURL(file))
     setDiagnosis(null)
     setError('')
     setDiagnosing(true)
     try {
+      const compressed = await compressImage(file, 'task')
+      setPhotoPreview(URL.createObjectURL(compressed))
       const uploadUrl = await generateUploadUrl()
-      const res = await fetch(uploadUrl, { method: 'POST', headers: { 'Content-Type': file.type }, body: file })
+      const res = await fetch(uploadUrl, { method: 'POST', headers: { 'Content-Type': compressed.type }, body: compressed })
       const { storageId } = await res.json() as { storageId: Id<'_storage'> }
       setPhotoStorageId(storageId)
       const result = await diagnosePhoto({ storageId, locale: i18n.language })
