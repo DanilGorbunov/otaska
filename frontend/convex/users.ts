@@ -32,7 +32,6 @@ export const updateProfile = mutation({
     city: v.optional(v.string()),
     bio: v.optional(v.string()),
     phone: v.optional(v.string()),
-    isProvider: v.optional(v.boolean()),
     locale: v.optional(v.string()),
     skills: v.optional(v.array(v.string())),
     category: v.optional(v.string()),
@@ -58,12 +57,15 @@ export const updateProfile = mutation({
     const { name, ...profileArgs } = args
     if (name) await ctx.db.patch(userId, { name })
     const existing = await ctx.db.query("userProfiles").withIndex("by_user", q => q.eq("userId", userId)).first()
+    // Discoverable as a performer the moment skills are filled in — no manual toggle.
+    const skillsAfter = profileArgs.skills !== undefined ? profileArgs.skills : existing?.skills
+    const isProvider = (skillsAfter?.length ?? 0) > 0
     if (existing) {
-      await ctx.db.patch(existing._id, profileArgs)
+      await ctx.db.patch(existing._id, { ...profileArgs, isProvider })
     } else {
       await ctx.db.insert("userProfiles", {
         userId,
-        isProvider: profileArgs.isProvider ?? false,
+        isProvider,
         rating: 0,
         jobsCompleted: 0,
         ...profileArgs,

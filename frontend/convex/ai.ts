@@ -53,6 +53,8 @@ const SYSTEM_PROMPT_TEMPLATE = `Ти — AI-помічник платформи 
 - Максимум 2 питання → потім RESULT
 - НЕ питай виконавця про "яку площу ремонтувати" — він сам робить, не замовляє!
 - Якщо вже є місто і хоча б одна деталь — відразу видавай RESULT
+- Ціна — ЗАВЖДИ в EUR (€), незалежно від того, якою валютою чи мовою користувач її назвав (грн, zł, Kč тощо). Сам конвертуй у приблизний еквівалент €, ніколи не підставляй цифру з іншої валюти напряму як євро.
+- Поле "city" у summary — це РІВНО те місто, яке назвав користувач у розмові, слово в слово (нормалізоване). Якщо користувач жодного разу не назвав місто — став null, НІКОЛИ не вигадуй і не підставляй дефолтне місто.
 
 ═══ ФОРМАТ ВІДПОВІДІ ═══
 
@@ -70,8 +72,9 @@ const SYSTEM_PROMPT_TEMPLATE = `Ти — AI-помічник платформи 
   "summary": {
     "emoji": "💪",
     "category": "Різноробочий",
-    "title": "Різноробочий · Братислава",
+    "title": "Різноробочий · Київ",
     "details": "праця по вихідним · нічні зміни можливі",
+    "city": "Київ",
     "budgetMin": 80,
     "budgetMax": 200,
     "intentType": "seeking_job",
@@ -143,15 +146,17 @@ export const chat = action({
 })
 
 export const parseProjectFull = action({
-  args: { text: v.string() },
-  handler: async (_ctx, { text }) => {
+  args: { text: v.string(), locale: v.optional(v.string()) },
+  handler: async (_ctx, { text, locale }) => {
     const apiKey = process.env.OPENAI_API_KEY
     if (!apiKey) throw new Error("OPENAI_API_KEY not set")
 
+    const language = RESPONSE_LANGUAGE[locale ?? "en"] ?? RESPONSE_LANGUAGE.en
     const system = `Ти — AI-помічник платформи OTaska. Користувач описує свій проєкт.
+Пиши projectTitle і назви тасків мовою: ${language} — незалежно від того, якою мовою написав користувач.
 Витягни з тексту:
 1. Назву проєкту (коротко, до 60 символів)
-2. Місто (якщо є, інакше "Bratislava")
+2. Місто — рівно те, що назвав користувач. Якщо місто не назване, поверни порожній рядок "" — НІКОЛИ не підставляй дефолтне місто.
 3. Список завдань — розбий на окремі позиції
 
 Для кожного завдання визнач тип:
@@ -327,19 +332,20 @@ ${candidatesText}
 })
 
 export const diagnosePhoto = action({
-  args: { storageId: v.id("_storage") },
-  handler: async (ctx, { storageId }): Promise<{ category: string; urgency: string; priceMin: number; priceMax: number }> => {
+  args: { storageId: v.id("_storage"), locale: v.optional(v.string()) },
+  handler: async (ctx, { storageId, locale }): Promise<{ category: string; urgency: string; priceMin: number; priceMax: number }> => {
     const apiKey = process.env.OPENAI_API_KEY
     if (!apiKey) throw new Error("OPENAI_API_KEY not set")
 
     const imageUrl = await ctx.storage.getUrl(storageId as Id<"_storage">)
     if (!imageUrl) throw new Error("Photo not found")
 
-    const system = `Ти — AI-експерт платформи OTaska (маркетплейс будівельних послуг у Братиславі/Празі/Варшаві).
+    const language = RESPONSE_LANGUAGE[locale ?? "en"] ?? RESPONSE_LANGUAGE.en
+    const system = `Ти — AI-експерт платформи OTaska (маркетплейс побутових послуг). Пиши категорію і терміновість мовою: ${language}.
 Користувач надіслав фото проблеми (протікання, тріщина, поламка тощо). Визнач:
 1. Категорію робіт (Електрика, Сантехніка, Ремонт, Малярство, Плитка, Теслярство, Будівництво, Інше)
 2. Терміновість ("Терміново", "Протягом тижня", "Не терміново")
-3. Орієнтовну вилку ціни в євро для ринку Центральної Європи
+3. Орієнтовну вилку ціни ЗАВЖДИ в євро (€)
 
 Повертай ТІЛЬКИ JSON:
 { "category": "Сантехніка", "urgency": "Терміново", "priceMin": 80, "priceMax": 200 }`

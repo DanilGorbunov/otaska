@@ -1,4 +1,4 @@
-import { query, mutation } from "./_generated/server"
+import { query, mutation, internalMutation } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { v } from "convex/values"
 import { internal } from "./_generated/api"
@@ -94,7 +94,7 @@ export const accept = mutation({
     const entry = await ctx.db.get(proposal.entryId)
     if (!entry || entry.clientId !== userId) throw new Error("Not authorized")
 
-    await ctx.db.patch(proposalId, { status: "accepted" })
+    await ctx.db.patch(proposalId, { status: "in_progress" })
     await ctx.db.patch(proposal.entryId, { status: "in_progress" })
 
     // Notify provider
@@ -120,6 +120,72 @@ export const accept = mutation({
   },
 })
 
+const AUTO_CONFIRM_MS = 60 * 60 * 60 * 1000 // 60h — client silence is treated as acceptance, not as a stuck deal
+
+// Provider saw the real scope on-site and the original price no longer fits — client must
+// confirm before the new price takes effect, so nobody gets billed for a number they never agreed to.
+export const proposeRequote = mutation({
+  args: { proposalId: v.id("proposals"), newPrice: v.number(), reason: v.string() },
+  handler: async (ctx, { proposalId, newPrice, reason }) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+    const proposal = await ctx.db.get(proposalId)
+    if (!proposal) throw new Error("Not found")
+    if (proposal.providerId !== userId) throw new Error("Not authorized")
+    if (proposal.status !== "in_progress") throw new Error("Can only requote work in progress")
+
+    await ctx.db.patch(proposalId, { requotedPrice: newPrice, requoteReason: reason, requoteStatus: "pending" })
+
+    const entry = await ctx.db.get(proposal.entryId)
+    if (!entry) throw new Error("Entry not found")
+
+    const clientSubs = await ctx.db.query("pushSubscriptions").withIndex("by_user", q => q.eq("userId", entry.clientId)).collect()
+    if (clientSubs.length > 0) {
+      await ctx.scheduler.runAfter(0, internal.pushNotifications.send, {
+        subscriptions: clientSubs.map(s => ({ endpoint: s.endpoint, p256dh: s.p256dh, auth: s.auth })),
+        title: "Виконавець пропонує нову ціну",
+        body: `€${newPrice}: ${reason.slice(0, 80)}`,
+        url: `/app/chat/${userId}`,
+      })
+    }
+
+    await ctx.db.insert("messages", {
+      fromId: userId,
+      toId: entry.clientId,
+      entryId: proposal.entryId,
+      text: `💬 Пропоную нову ціну €${newPrice}: ${reason}`,
+      read: false,
+    })
+  },
+})
+
+export const respondToRequote = mutation({
+  args: { proposalId: v.id("proposals"), accept: v.boolean() },
+  handler: async (ctx, { proposalId, accept }) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+    const proposal = await ctx.db.get(proposalId)
+    if (!proposal) throw new Error("Not found")
+    const entry = await ctx.db.get(proposal.entryId)
+    if (!entry || entry.clientId !== userId) throw new Error("Not authorized")
+    if (proposal.requoteStatus !== "pending") throw new Error("No pending requote")
+
+    if (accept && proposal.requotedPrice != null) {
+      await ctx.db.patch(proposalId, { price: proposal.requotedPrice, requoteStatus: "accepted" })
+    } else {
+      await ctx.db.patch(proposalId, { requoteStatus: "rejected" })
+    }
+
+    await ctx.db.insert("messages", {
+      fromId: userId,
+      toId: proposal.providerId,
+      entryId: proposal.entryId,
+      text: accept ? `✅ Нову ціну €${proposal.requotedPrice} прийнято.` : `✗ Нову ціну відхилено. Працюємо за €${proposal.price}.`,
+      read: false,
+    })
+  },
+})
+
 export const markDone = mutation({
   args: { proposalId: v.id("proposals") },
   handler: async (ctx, { proposalId }) => {
@@ -129,7 +195,8 @@ export const markDone = mutation({
     if (!proposal) throw new Error("Not found")
     if (proposal.providerId !== userId) throw new Error("Not authorized")
 
-    await ctx.db.patch(proposalId, { status: "done" })
+    await ctx.db.patch(proposalId, { status: "done", doneAt: Date.now() })
+    await ctx.scheduler.runAfter(AUTO_CONFIRM_MS, internal.proposals.autoConfirm, { proposalId })
 
     const entry = await ctx.db.get(proposal.entryId)
     // Notify client
@@ -186,6 +253,74 @@ export const mockPay = mutation({
     })
 
     await trackEvent(ctx, "booking_done", { userId, entryId: proposal.entryId, meta: { price: proposal.price } })
+  },
+})
+
+export const dispute = mutation({
+  args: { proposalId: v.id("proposals"), reason: v.string() },
+  handler: async (ctx, { proposalId, reason }) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+    const proposal = await ctx.db.get(proposalId)
+    if (!proposal) throw new Error("Not found")
+    const entry = await ctx.db.get(proposal.entryId)
+    if (!entry || entry.clientId !== userId) throw new Error("Not authorized")
+    if (proposal.status !== "done") throw new Error("Can only dispute work marked as done")
+
+    await ctx.db.patch(proposalId, { status: "disputed", disputeReason: reason })
+
+    const providerSubs = await ctx.db.query("pushSubscriptions").withIndex("by_user", q => q.eq("userId", proposal.providerId)).collect()
+    if (providerSubs.length > 0) {
+      await ctx.scheduler.runAfter(0, internal.pushNotifications.send, {
+        subscriptions: providerSubs.map(s => ({ endpoint: s.endpoint, p256dh: s.p256dh, auth: s.auth })),
+        title: "Клієнт оскаржив виконання",
+        body: reason.slice(0, 100),
+        url: `/app/chat/${userId}`,
+      })
+    }
+
+    await ctx.db.insert("messages", {
+      fromId: userId,
+      toId: proposal.providerId,
+      entryId: proposal.entryId,
+      text: `⚠️ Спір: ${reason}`,
+      read: false,
+    })
+
+    await trackEvent(ctx, "booking_disputed", { userId, entryId: proposal.entryId })
+  },
+})
+
+// Client silence 60h after "done" is not the same as a satisfied client — but a permanently
+// stuck deal is worse for both sides, so payout releases automatically unless disputed first.
+export const autoConfirm = internalMutation({
+  args: { proposalId: v.id("proposals") },
+  handler: async (ctx, { proposalId }) => {
+    const proposal = await ctx.db.get(proposalId)
+    if (!proposal || proposal.status !== "done") return // already paid, disputed, or gone
+    const entry = await ctx.db.get(proposal.entryId)
+    if (!entry) return
+
+    await ctx.db.patch(proposalId, { status: "paid" })
+    await ctx.db.patch(proposal.entryId, { status: "done" })
+
+    await ctx.db.insert("messages", {
+      fromId: proposal.providerId,
+      toId: entry.clientId,
+      entryId: proposal.entryId,
+      text: `✅ Минуло 60 год без відповіді — оплату €${proposal.price ?? "—"} підтверджено автоматично.`,
+      read: false,
+    })
+
+    const clientSubs = await ctx.db.query("pushSubscriptions").withIndex("by_user", q => q.eq("userId", entry.clientId)).collect()
+    if (clientSubs.length > 0) {
+      await ctx.scheduler.runAfter(0, internal.pushNotifications.send, {
+        subscriptions: clientSubs.map(s => ({ endpoint: s.endpoint, p256dh: s.p256dh, auth: s.auth })),
+        title: "Оплату підтверджено автоматично",
+        body: `Ви не відповіли протягом 60 год — вважаємо роботу прийнятою.`,
+        url: `/app/chat/${proposal.providerId}`,
+      })
+    }
   },
 })
 

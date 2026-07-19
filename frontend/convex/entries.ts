@@ -45,7 +45,7 @@ export const listOpen = query({
       .withIndex("by_status", (q) => q.eq("status", "open"))
       .order("desc")
       .take(100)
-    return results.filter((e) => {
+    const filtered = results.filter((e) => {
       if (intentType && e.intentType !== intentType) return false
       if (category && e.category !== category) return false
       if (city && e.city && !e.city.toLowerCase().includes(city.toLowerCase())) return false
@@ -53,12 +53,21 @@ export const listOpen = query({
       if (budgetMax != null && e.budgetMin != null && e.budgetMin > budgetMax) return false
       return true
     })
+    return Promise.all(filtered.map(async (e) => ({
+      ...e,
+      photoUrl: e.photoStorageId ? await ctx.storage.getUrl(e.photoStorageId) : null,
+    })))
   },
 })
 
 export const get = query({
   args: { id: v.id("entries") },
-  handler: async (ctx, { id }) => ctx.db.get(id),
+  handler: async (ctx, { id }) => {
+    const entry = await ctx.db.get(id)
+    if (!entry) return null
+    const photoUrl = entry.photoStorageId ? await ctx.storage.getUrl(entry.photoStorageId) : null
+    return { ...entry, photoUrl }
+  },
 })
 
 export const getByIds = query({
@@ -191,6 +200,7 @@ export const create = mutation({
     budgetMax: v.optional(v.number()),
     skills: v.optional(v.array(v.string())),
     urgency: v.optional(v.string()),
+    photoStorageId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx)

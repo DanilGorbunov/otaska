@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useMutation, useAction, useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
@@ -19,7 +20,7 @@ type ParsedProject = {
 
 // Sub-component: shows provider search indicator for one task
 function TaskProviderIndicator({ taskTitle, city }: { taskTitle: string; city: string }) {
-  const results = useQuery(api.users.searchProvidersForTask, { taskTitle, city: city || 'Bratislava' })
+  const results = useQuery(api.users.searchProvidersForTask, { taskTitle, city: city || undefined })
 
   if (results === undefined) {
     return <span style={{ fontSize: 11, color: '#EF9F27' }}>🟡 Шукаємо...</span>
@@ -36,6 +37,9 @@ function TaskProviderIndicator({ taskTitle, city }: { taskTitle: string; city: s
 
 export function NewEntry() {
   const navigate = useNavigate()
+  const { i18n } = useTranslation()
+  const me = useQuery(api.users.getMe)
+  const myCity = me?.profile?.city ?? ''
   const createAndPublish = useMutation(api.entries.createAndPublish)
   const createDraft = useMutation(api.entries.create)
   const createTask = useMutation(api.entries.createTask)
@@ -53,6 +57,9 @@ export function NewEntry() {
 
   // Entry mode
   const [text, setText] = useState('')
+  const [entryPhotoPreview, setEntryPhotoPreview] = useState<string | null>(null)
+  const [entryPhotoStorageId, setEntryPhotoStorageId] = useState<Id<'_storage'> | null>(null)
+  const [entryPhotoUploading, setEntryPhotoUploading] = useState(false)
 
   // Project mode — step 1
   const [projectTitle, setProjectTitle] = useState('')
@@ -72,7 +79,7 @@ export function NewEntry() {
     setParsing(true)
     setError('')
     try {
-      const result = await parseProjectFull({ text }) as { projectTitle: string; projectCity: string; tasks: Array<{ title: string; type: 'service' | 'material'; intentType: string }> }
+      const result = await parseProjectFull({ text, locale: i18n.language }) as { projectTitle: string; projectCity: string; tasks: Array<{ title: string; type: 'service' | 'material'; intentType: string }> }
       setParsed({
         projectTitle: projectTitle.trim() || result.projectTitle,
         projectCity: projectCity.trim() || result.projectCity,
@@ -93,7 +100,7 @@ export function NewEntry() {
     setSubmitting(true)
     setError('')
     try {
-      const args = { title: text.slice(0, 80), description: text, intentType: 'seeking_service' as const, entryType: 'on_demand' as const, category: 'Інше', city: 'Bratislava', budgetMin: 0, budgetMax: 0 }
+      const args = { title: text.slice(0, 80), description: text, intentType: 'seeking_service' as const, entryType: 'on_demand' as const, category: 'Інше', city: myCity || undefined, budgetMin: 0, budgetMax: 0, photoStorageId: entryPhotoStorageId ?? undefined }
       if (draft) await createDraft(args)
       else await createAndPublish(args)
       navigate(-1)
@@ -114,7 +121,7 @@ export function NewEntry() {
         intentType: 'seeking_service',
         entryType: 'project',
         category: 'Проєкт',
-        city: parsed.projectCity,
+        city: parsed.projectCity || myCity || undefined,
         budgetMin: 0,
         budgetMax: 0,
       }) as Id<'entries'>
@@ -133,6 +140,21 @@ export function NewEntry() {
     }
   }
 
+  const handleEntryPhotoSelect = async (file: File) => {
+    setEntryPhotoPreview(URL.createObjectURL(file))
+    setEntryPhotoUploading(true)
+    try {
+      const uploadUrl = await generateUploadUrl()
+      const res = await fetch(uploadUrl, { method: 'POST', headers: { 'Content-Type': file.type }, body: file })
+      const { storageId } = await res.json() as { storageId: Id<'_storage'> }
+      setEntryPhotoStorageId(storageId)
+    } catch (e) {
+      setError((e as Error)?.message ?? 'Помилка завантаження фото')
+    } finally {
+      setEntryPhotoUploading(false)
+    }
+  }
+
   const handlePhotoSelect = async (file: File) => {
     setPhotoPreview(URL.createObjectURL(file))
     setDiagnosis(null)
@@ -143,7 +165,7 @@ export function NewEntry() {
       const res = await fetch(uploadUrl, { method: 'POST', headers: { 'Content-Type': file.type }, body: file })
       const { storageId } = await res.json() as { storageId: Id<'_storage'> }
       setPhotoStorageId(storageId)
-      const result = await diagnosePhoto({ storageId })
+      const result = await diagnosePhoto({ storageId, locale: i18n.language })
       setDiagnosis(result)
     } catch (e) {
       setError((e as Error)?.message ?? 'Помилка діагностики фото')
@@ -163,7 +185,7 @@ export function NewEntry() {
         intentType: 'seeking_service',
         entryType: 'on_demand',
         category: diagnosis.category,
-        city: 'Bratislava',
+        city: myCity || undefined,
         budgetMin: diagnosis.priceMin,
         budgetMax: diagnosis.priceMax,
         urgency: diagnosis.urgency,
@@ -244,17 +266,35 @@ export function NewEntry() {
                 />
                 <div style={{ fontSize: 12, color: '#C7C7CC', marginTop: 6 }}>{text.length}/500</div>
               </div>
+
+              {entryPhotoPreview && (
+                <div style={{ position: 'relative', marginBottom: 10 }}>
+                  <img src={entryPhotoPreview} alt="" style={{ width: '100%', maxHeight: 180, objectFit: 'cover', borderRadius: 14 }} />
+                  <button onClick={() => { setEntryPhotoPreview(null); setEntryPhotoStorageId(null) }}
+                    style={{ position: 'absolute', top: 8, right: 8, width: 28, height: 28, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,.55)', color: '#fff', cursor: 'pointer', fontSize: 14 }}>
+                    ✕
+                  </button>
+                </div>
+              )}
+              <label style={{ display: 'block', marginBottom: 10 }}>
+                <input type="file" accept="image/*" style={{ display: 'none' }}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handleEntryPhotoSelect(f) }} />
+                <div style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid #EDE8DF', textAlign: 'center', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#5A4A2E', background: '#fff' }}>
+                  {entryPhotoUploading ? '⏳ Завантажуємо...' : entryPhotoPreview ? '📷 Змінити фото' : '📷 Додати фото (необов\'язково)'}
+                </div>
+              </label>
+
               {error && <p style={{ fontSize: 13, color: '#DC2626', marginBottom: 10 }}>{error}</p>}
               <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
                 <button onClick={() => navigate(-1)} style={{ flex: 1, padding: 14, borderRadius: 14, border: 'none', cursor: 'pointer', background: 'rgba(118,118,128,.12)', fontSize: 15, fontWeight: 500, color: '#3C3C43', fontFamily: 'inherit' }}>
                   Скасувати
                 </button>
-                <button onClick={() => handleEntrySubmit(false)} disabled={!text.trim() || submitting}
+                <button onClick={() => handleEntrySubmit(false)} disabled={!text.trim() || submitting || entryPhotoUploading}
                   style={{ flex: 2, padding: 14, borderRadius: 14, border: 'none', cursor: text.trim() ? 'pointer' : 'not-allowed', background: text.trim() ? '#111' : '#C7C7CC', fontSize: 17, fontWeight: 700, color: '#fff', fontFamily: 'inherit' }}>
                   {submitting ? 'Зберігаємо...' : 'Опублікувати →'}
                 </button>
               </div>
-              <button onClick={() => handleEntrySubmit(true)} disabled={!text.trim() || submitting}
+              <button onClick={() => handleEntrySubmit(true)} disabled={!text.trim() || submitting || entryPhotoUploading}
                 style={{ width: '100%', padding: '12px 14px', borderRadius: 14, border: '1.5px solid #EDE8DF', cursor: text.trim() ? 'pointer' : 'not-allowed', background: '#fff', fontSize: 14, fontWeight: 500, color: text.trim() ? '#5A4A2E' : '#C7C7CC', fontFamily: 'inherit' }}>
                 🔒 Зберегти як чернетку
               </button>

@@ -12,6 +12,8 @@ export default defineSchema({
     phone: v.optional(v.string()),
     isProvider: v.boolean(),
     locale: v.optional(v.string()),
+    stripeAccountId: v.optional(v.string()),
+    stripeOnboarded: v.optional(v.boolean()),
     verified: v.optional(v.boolean()),
     verifiedAt: v.optional(v.number()),
     skills: v.optional(v.array(v.string())),
@@ -45,11 +47,13 @@ export default defineSchema({
   reviews: defineTable({
     proposalId: v.id("proposals"),
     reviewerId: v.id("users"),
-    providerId: v.id("users"),
+    revieweeId: v.id("users"),
+    direction: v.union(v.literal("client_to_provider"), v.literal("provider_to_client")),
     entryId: v.id("entries"),
     rating: v.number(),
+    tags: v.optional(v.array(v.string())),
     comment: v.optional(v.string()),
-  }).index("by_provider", ["providerId"])
+  }).index("by_reviewee", ["revieweeId"])
     .index("by_proposal", ["proposalId"]),
 
   entries: defineTable({
@@ -114,10 +118,20 @@ export default defineSchema({
       v.literal("accepted"),
       v.literal("in_progress"),
       v.literal("done"),
+      v.literal("disputed"),
       v.literal("paid"),
       v.literal("rejected"),
     ),
     estimatedDays: v.optional(v.number()),
+    doneAt: v.optional(v.number()),
+    disputeReason: v.optional(v.string()),
+    requotedPrice: v.optional(v.number()),
+    requoteReason: v.optional(v.string()),
+    requoteStatus: v.optional(v.union(v.literal("pending"), v.literal("accepted"), v.literal("rejected"))),
+    stripeCheckoutSessionId: v.optional(v.string()),
+    stripePaymentIntentId: v.optional(v.string()),
+    stripeTransferId: v.optional(v.string()),
+    escrowFunded: v.optional(v.boolean()),
   })
     .index("by_entry", ["entryId"])
     .index("by_provider", ["providerId"]),
@@ -135,6 +149,7 @@ export default defineSchema({
     entryId: v.optional(v.id("entries")),
     text: v.string(),
     read: v.boolean(),
+    flaggedContact: v.optional(v.boolean()),
   })
     .index("by_from", ["fromId"])
     .index("by_to", ["toId"]),

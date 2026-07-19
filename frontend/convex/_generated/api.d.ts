@@ -15,6 +15,7 @@ import type * as config from "../config.js";
 import type * as entries from "../entries.js";
 import type * as http from "../http.js";
 import type * as messages from "../messages.js";
+import type * as payments from "../payments.js";
 import type * as proposals from "../proposals.js";
 import type * as pushNotifications from "../pushNotifications.js";
 import type * as pushSubscriptions from "../pushSubscriptions.js";
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   entries: typeof entries;
   http: typeof http;
   messages: typeof messages;
+  payments: typeof payments;
   proposals: typeof proposals;
   pushNotifications: typeof pushNotifications;
   pushSubscriptions: typeof pushSubscriptions;

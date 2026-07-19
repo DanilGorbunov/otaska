@@ -1,33 +1,43 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { BellButton } from '../components/layout/NavBar'
-import { CATEGORIES, CATEGORY_GROUPS, INTENT_TYPES, INTENT_LABEL } from '../lib/categories'
+import { CATEGORIES, CATEGORY_GROUPS, INTENT_LABEL } from '../lib/categories'
+
+// Demand = clients looking for someone to hire. Supply = performers offering to be hired.
+// Mixing these in one feed makes a performer see their own listing next to their competitors'
+// open tasks — split them so "Знайти" always answers one question at a time.
+const DEMAND_INTENTS = ['seeking_service', 'seeking_material']
+const SUPPLY_INTENTS = ['offering_service', 'seeking_job']
 
 export function Browse() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('Всі')
-  const [intentType, setIntentType] = useState<string | null>(null)
+  const [feedTab, setFeedTab] = useState<'demand' | 'supply'>('demand')
   const [city, setCity] = useState('')
   const [showMoreFilters, setShowMoreFilters] = useState(false)
 
   const allOpen = useQuery(api.entries.listOpen, {
     category: category === 'Всі' ? undefined : category,
-    intentType: intentType ?? undefined,
     city: city.trim() || undefined,
   }) ?? null
+
+  const activeIntents = feedTab === 'demand' ? DEMAND_INTENTS : SUPPLY_INTENTS
 
   const entries = useMemo(() => {
     if (!allOpen) return null
     return allOpen.filter(e => {
       if (e.entryType === 'project') return false
+      if (!activeIntents.includes(e.intentType)) return false
       const matchSearch = !search || e.title.toLowerCase().includes(search.toLowerCase()) ||
         (e.description ?? '').toLowerCase().includes(search.toLowerCase())
       return matchSearch
     })
-  }, [allOpen, search])
+  }, [allOpen, search, activeIntents])
 
   return (
     <div style={{ background: '#F2F2F7', minHeight: '100dvh' }}>
@@ -44,6 +54,25 @@ export function Browse() {
       </div>
 
       <div style={{ padding: '14px 16px 0' }}>
+        {/* Demand vs supply — the two feeds never mix */}
+        <div style={{ display: 'flex', background: '#EDE8DF', borderRadius: 12, padding: 3, marginBottom: 12 }}>
+          {([
+            { key: 'demand' as const, label: 'Задачі' },
+            { key: 'supply' as const, label: 'Виконавці' },
+          ]).map(t => (
+            <button key={t.key} onClick={() => setFeedTab(t.key)} style={{
+              flex: 1, padding: '8px 0', borderRadius: 9, border: 'none', cursor: 'pointer',
+              background: feedTab === t.key ? '#fff' : 'transparent',
+              color: feedTab === t.key ? '#1A1612' : '#9A8060',
+              fontSize: 14, fontWeight: 700, fontFamily: 'inherit',
+              boxShadow: feedTab === t.key ? '0 1px 4px rgba(0,0,0,.1)' : 'none',
+              transition: 'all .15s',
+            }}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+
         {/* Search */}
         <div style={{ position: 'relative', marginBottom: 12 }}>
           <svg style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
@@ -74,7 +103,7 @@ export function Browse() {
               boxShadow: category === cat ? '0 2px 8px rgba(0,0,0,.2)' : '0 1px 4px rgba(0,0,0,.07)',
               transition: 'all .15s',
             }}>
-              {cat}
+              {t(`categories.${cat}`, cat)}
             </button>
           ))}
         </div>
@@ -82,37 +111,13 @@ export function Browse() {
         {/* More filters toggle */}
         <button onClick={() => setShowMoreFilters(v => !v)} style={{
           display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer',
-          padding: '2px 0 10px', fontSize: 13, fontWeight: 600, color: intentType || city ? '#1A1612' : '#9A8060', fontFamily: 'inherit',
+          padding: '2px 0 10px', fontSize: 13, fontWeight: 600, color: city ? '#1A1612' : '#9A8060', fontFamily: 'inherit',
         }}>
-          Фільтри{(intentType || city) ? ' •' : ''} {showMoreFilters ? '▲' : '▼'}
+          Фільтри{city ? ' •' : ''} {showMoreFilters ? '▲' : '▼'}
         </button>
 
         {showMoreFilters && (
           <div style={{ paddingBottom: 14 }}>
-            {/* Intent type pills */}
-            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 10, scrollbarWidth: 'none' }}>
-              <button onClick={() => setIntentType(null)} style={{
-                padding: '6px 14px', borderRadius: 99, border: 'none', cursor: 'pointer', flexShrink: 0,
-                background: intentType === null ? '#1A1612' : '#fff',
-                color: intentType === null ? '#fff' : '#9A8060',
-                fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
-                boxShadow: intentType === null ? '0 2px 8px rgba(0,0,0,.2)' : '0 1px 4px rgba(0,0,0,.07)',
-              }}>
-                Всі типи
-              </button>
-              {INTENT_TYPES.map(it => (
-                <button key={it} onClick={() => setIntentType(it)} style={{
-                  padding: '6px 14px', borderRadius: 99, border: 'none', cursor: 'pointer', flexShrink: 0,
-                  background: intentType === it ? '#1A1612' : '#fff',
-                  color: intentType === it ? '#fff' : '#9A8060',
-                  fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
-                  boxShadow: intentType === it ? '0 2px 8px rgba(0,0,0,.2)' : '0 1px 4px rgba(0,0,0,.07)',
-                }}>
-                  {INTENT_LABEL[it]?.label ?? it}
-                </button>
-              ))}
-            </div>
-
             {/* City input */}
             <input value={city} onChange={e => setCity(e.target.value)}
               placeholder="Місто..."
@@ -126,7 +131,7 @@ export function Browse() {
             {/* Extended category taxonomy, grouped by vertical — not just construction */}
             {CATEGORY_GROUPS.map(g => (
               <div key={g.group} style={{ marginBottom: 8 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#B4A898', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>{g.label}</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#B4A898', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>{t(`categories.${g.label}`, g.label)}</div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {g.categories.map(cat => (
                     <button key={cat} onClick={() => setCategory(cat)} style={{
@@ -136,7 +141,7 @@ export function Browse() {
                       fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
                       boxShadow: category === cat ? '0 2px 8px rgba(0,0,0,.2)' : '0 1px 4px rgba(0,0,0,.07)',
                     }}>
-                      {cat}
+                      {t(`categories.${cat}`, cat)}
                     </button>
                   ))}
                 </div>
@@ -172,19 +177,26 @@ export function Browse() {
                 onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,.1)' }}
                 onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,.06)' }}
               >
-                <div style={{ fontSize: 16, fontWeight: 700, color: '#1A1612', marginBottom: 6, letterSpacing: '-.2px' }}>{e.title}</div>
-                {e.description && e.description !== e.title && (
-                  <div style={{ fontSize: 13, color: '#5A4A2E', marginBottom: 10, lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                    {e.description}
+                <div style={{ display: 'flex', gap: 12 }}>
+                  {e.photoUrl && (
+                    <img src={e.photoUrl} alt="" style={{ width: 56, height: 56, borderRadius: 12, objectFit: 'cover', flexShrink: 0 }} />
+                  )}
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: '#1A1612', marginBottom: 6, letterSpacing: '-.2px' }}>{e.title}</div>
+                    {e.description && e.description !== e.title && (
+                      <div style={{ fontSize: 13, color: '#5A4A2E', marginBottom: 10, lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {e.description}
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                   <span style={{ fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 99, background: intent.bg, color: intent.color }}>
-                    {intent.label}
+                    {t(`intent.${e.intentType}`, intent.label)}
                   </span>
                   {e.city && <span style={{ fontSize: 12, color: '#9A8060' }}>📍 {e.city}</span>}
                   {e.category && e.category !== 'Інше' && (
-                    <span style={{ fontSize: 12, color: '#9A8060', background: '#F5F3EF', padding: '3px 8px', borderRadius: 99, fontWeight: 500 }}>{e.category}</span>
+                    <span style={{ fontSize: 12, color: '#9A8060', background: '#F5F3EF', padding: '3px 8px', borderRadius: 99, fontWeight: 500 }}>{t(`categories.${e.category}`, e.category)}</span>
                   )}
                   {e.budgetMin != null && e.budgetMax != null && e.budgetMax > 0 && (
                     <span style={{ fontSize: 13, fontWeight: 700, color: '#EF9F27', marginLeft: 'auto' }}>€{e.budgetMin}–{e.budgetMax}</span>

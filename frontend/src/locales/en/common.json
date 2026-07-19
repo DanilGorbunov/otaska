@@ -47,5 +47,38 @@
       "errorEmail": "Invalid email",
       "errorPassword": "Minimum 8 characters"
     }
+  },
+  "intent": {
+    "seeking_service": "Looking for a pro",
+    "offering_service": "Offering a service",
+    "seeking_job": "Looking for work",
+    "seeking_material": "Looking for materials"
+  },
+  "categories": {
+    "Всі": "All",
+    "Електрика": "Electrical",
+    "Сантехніка": "Plumbing",
+    "Ремонт": "Repair",
+    "Фарбування": "Painting",
+    "Плитка": "Tiling",
+    "Теслярство": "Carpentry",
+    "Матеріали": "Materials",
+    "Переїзд": "Moving",
+    "Прибирання": "Cleaning",
+    "Ландшафт": "Landscaping",
+    "Репетиторство": "Tutoring",
+    "ІТ/техпідтримка": "IT support",
+    "Організація подій": "Event planning",
+    "Краса/здоров'я": "Beauty & health",
+    "Догляд за тваринами": "Pet care",
+    "Авто": "Auto",
+    "Інше": "Other",
+    "Будівництво": "Construction",
+    "Дім": "Home",
+    "Освіта": "Education",
+    "ІТ": "IT",
+    "Події": "Events",
+    "Краса": "Beauty",
+    "Тварини": "Pets"
   }
 }

@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom'
+import { createPortal } from 'react-dom'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
@@ -71,21 +72,24 @@ export function ProviderProfile() {
             </>
         }
 
-        {/* Back button */}
-        <button onClick={() => navigate(-1)} style={{
-          position: 'absolute', top: 16, left: 16,
-          width: 36, height: 36, borderRadius: '50%',
-          background: 'rgba(0,0,0,.35)', backdropFilter: 'blur(8px)',
-          border: 'none', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-        </button>
+        {/* Back button — portaled to body so it stays truly viewport-fixed (an ancestor's
+            willChange:transform would otherwise turn position:fixed into position:absolute) */}
+        {createPortal((
+          <button onClick={() => navigate(-1)} style={{
+            position: 'fixed', top: 16, left: 16, zIndex: 60,
+            width: 36, height: 36, borderRadius: '50%',
+            background: 'rgba(0,0,0,.35)', backdropFilter: 'blur(8px)',
+            border: 'none', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
+        ), document.body)}
 
         {/* Role badge top-right */}
-        {profile?.isProvider && (
+        {(profile?.skills?.length ?? 0) > 0 && (
           <div style={{
             position: 'absolute', top: 16, right: 16,
             background: 'rgba(0,0,0,.35)', backdropFilter: 'blur(8px)',
@@ -221,6 +225,13 @@ export function ProviderProfile() {
                   </div>
                 </div>
                 {r.entryTitle && <div style={{ fontSize: 12, color: '#9A8060', marginBottom: 4 }}>«{r.entryTitle}»</div>}
+                {r.tags && r.tags.length > 0 && (
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const, marginBottom: r.comment ? 6 : 0 }}>
+                    {r.tags.map(tag => (
+                      <span key={tag} style={{ fontSize: 11, fontWeight: 600, color: '#854F0B', background: '#FAEEDA', padding: '3px 9px', borderRadius: 99 }}>{tag}</span>
+                    ))}
+                  </div>
+                )}
                 {r.comment && <div style={{ fontSize: 14, color: '#3C3226', lineHeight: 1.55 }}>{r.comment}</div>}
               </div>
             ))

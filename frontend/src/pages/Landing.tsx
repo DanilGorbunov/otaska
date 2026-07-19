@@ -13,6 +13,7 @@ interface AIResult {
   emoji: string; category: string; title: string; details: string
   budgetMin: number; budgetMax: number
   intentType: string; entryType: string
+  city?: string | null
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -185,12 +186,13 @@ export function Landing() {
         setMsgs(prev => [...prev, { role: 'assistant', content: goalCount === 2 ? t('landing.chat.publishingTwo') : t('landing.chat.publishingOne'), kind: 'reg' }])
         setAuthLoading(true)
         try {
-          const city = updatedForm.city || 'Bratislava'
+          // City comes from what the user actually said in the AI conversation — never a hardcoded default.
+          const city = updatedForm.city || aiResult?.city || secondAiResult?.city || undefined
 
           // Save pending entries to localStorage BEFORE signIn so auth token is ready when Dashboard reads them
           const pending = []
-          if (aiResult) pending.push({ title: aiResult.title ?? task.slice(0, 80), description: task, intentType: aiResult.intentType, entryType: aiResult.entryType ?? 'on_demand', category: aiResult.category, city, budgetMin: aiResult.budgetMin, budgetMax: aiResult.budgetMax })
-          if (secondAiResult) { const t2 = msgs.find(m => m.cardIndex === 1)?.card?.title ?? secondAiResult.title ?? ''; pending.push({ title: secondAiResult.title ?? t2.slice(0, 80), description: t2, intentType: secondAiResult.intentType, entryType: secondAiResult.entryType ?? 'on_demand', category: secondAiResult.category, city, budgetMin: secondAiResult.budgetMin, budgetMax: secondAiResult.budgetMax }) }
+          if (aiResult) pending.push({ title: aiResult.title ?? task.slice(0, 80), description: task, intentType: aiResult.intentType, entryType: aiResult.entryType ?? 'on_demand', category: aiResult.category, city: aiResult.city || city, budgetMin: aiResult.budgetMin, budgetMax: aiResult.budgetMax })
+          if (secondAiResult) { const t2 = msgs.find(m => m.cardIndex === 1)?.card?.title ?? secondAiResult.title ?? ''; pending.push({ title: secondAiResult.title ?? t2.slice(0, 80), description: t2, intentType: secondAiResult.intentType, entryType: secondAiResult.entryType ?? 'on_demand', category: secondAiResult.category, city: secondAiResult.city || city, budgetMin: secondAiResult.budgetMin, budgetMax: secondAiResult.budgetMax }) }
           if (pending.length > 0) localStorage.setItem('otaska_pending_entries', JSON.stringify(pending))
 
           await signIn('password', { email: updatedForm.email, password: updatedForm.password, name: updatedForm.name, flow: 'signUp' })

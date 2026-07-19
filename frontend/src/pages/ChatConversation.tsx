@@ -54,7 +54,7 @@ export function ChatConversation() {
     ...messages,
     ...optimistic
       .filter(o => !messages.some(m => m.text === o.text && m._creationTime >= o.ts))
-      .map(o => ({ _id: `opt-${o.ts}` as Id<'messages'>, text: o.text, fromId: myId!, toId: partnerId, _creationTime: o.ts, read: false })),
+      .map(o => ({ _id: `opt-${o.ts}` as Id<'messages'>, text: o.text, fromId: myId!, toId: partnerId, _creationTime: o.ts, read: false, entryId: undefined, flaggedContact: false })),
   ].sort((a, b) => a._creationTime - b._creationTime)
 
   useEffect(() => {
@@ -108,13 +108,18 @@ export function ChatConversation() {
         {allMessages.map(m => {
           const isMe = m.fromId === myId
           return (
-            <div key={m._id} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start', marginBottom: 8 }}>
+            <div key={m._id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', marginBottom: 8 }}>
               <div style={{ maxWidth: '78%', padding: '10px 14px', borderRadius: isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px', background: isMe ? '#1A1612' : '#fff', color: isMe ? '#fff' : '#1A1612', fontSize: 15, lineHeight: 1.45, boxShadow: '0 1px 4px rgba(0,0,0,.08)' }}>
                 {m.text}
                 <div style={{ fontSize: 11, color: isMe ? 'rgba(255,255,255,.5)' : '#C0B49A', marginTop: 4, textAlign: 'right' }}>
                   {new Date(m._creationTime).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}
                 </div>
               </div>
+              {m.flaggedContact && isMe && (
+                <div style={{ maxWidth: '78%', fontSize: 11, color: '#9A8060', marginTop: 3, padding: '0 4px' }}>
+                  ⚠️ Схоже на контакт чи посилання. Угоди поза платформою не покриваються гарантією й захистом оплати.
+                </div>
+              )}
             </div>
           )
         })}

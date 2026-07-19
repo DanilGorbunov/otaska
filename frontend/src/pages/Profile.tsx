@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useMutation, useQuery } from 'convex/react'
+import { useMutation, useQuery, useAction } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
 import { useAuthActions } from '@convex-dev/auth/react'
@@ -41,6 +41,9 @@ export function Profile() {
   const addPortfolioItem = useMutation(api.storage.addPortfolioItem)
   const removePortfolioItem = useMutation(api.storage.removePortfolioItem)
   const updateCaption = useMutation(api.storage.updatePortfolioCaption)
+  const createOnboardingLink = useAction(api.payments.createProviderOnboardingLink)
+  const [connectingPayouts, setConnectingPayouts] = useState(false)
+  const [connectError, setConnectError] = useState('')
 
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -48,7 +51,6 @@ export function Profile() {
   const [city, setCity] = useState('')
   const [bio, setBio] = useState('')
   const [category, setCategory] = useState('')
-  const [isProvider, setIsProvider] = useState(false)
   const [skills, setSkills] = useState<string[]>([])
   const [hourlyRate, setHourlyRate] = useState('')
   const [priceFrom, setPriceFrom] = useState('')
@@ -84,13 +86,13 @@ export function Profile() {
   const portfolioUrls = data?.portfolioUrls ?? []
   const displayName = user?.name ?? user?.email?.split('@')[0] ?? 'Користувач'
   const initials = displayName.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
+  const isPerformer = (profile?.skills?.length ?? 0) > 0
 
   const openEdit = () => {
     setName(user?.name ?? '')
     setCity(profile?.city ?? '')
     setBio(profile?.bio ?? '')
     setCategory(profile?.category ?? '')
-    setIsProvider(profile?.isProvider ?? false)
     setSkills(profile?.skills ?? [])
     setHourlyRate(profile?.hourlyRate ? String(profile.hourlyRate) : '')
     setPriceFrom(profile?.priceFrom ? String(profile.priceFrom) : '')
@@ -117,7 +119,6 @@ export function Profile() {
         city: city || undefined,
         bio: bio || undefined,
         category: category || undefined,
-        isProvider,
         skills: skills.length > 0 ? skills : undefined,
         hourlyRate: hourlyRate ? Number(hourlyRate) : undefined,
         priceFrom: priceFrom ? Number(priceFrom) : undefined,
@@ -154,6 +155,17 @@ export function Profile() {
   return (
     <div style={{ background: '#F2F2F7', minHeight: '100dvh', paddingBottom: 40 }}>
 
+      {/* Sticky header */}
+      <div style={{
+        position: 'sticky', top: 0, zIndex: 60,
+        background: 'rgba(242,242,247,.94)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+        borderBottom: '0.5px solid rgba(154,128,96,.2)',
+      }}>
+        <div style={{ height: 52, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}>
+          <span style={{ fontSize: 17, fontWeight: 700, color: '#1A1612', letterSpacing: '-.4px' }}>Профіль</span>
+        </div>
+      </div>
+
       {/* Cover */}
       <div style={{ position: 'relative', height: 180, overflow: 'hidden', background: coverUrl ? undefined : 'linear-gradient(135deg, #1A1612 0%, #3D2E1E 60%, #EF9F27 100%)' }}>
         {coverUrl
@@ -180,7 +192,7 @@ export function Profile() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, paddingBottom: 8 }}>
-            {profile?.isProvider && (
+            {isPerformer && (
               <button onClick={() => navigate(`/app/users/${user?._id}`)}
                 style={{ padding: '8px 14px', borderRadius: 12, border: '1.5px solid #EDE8DF', background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#5A4A2E', fontFamily: 'inherit' }}>
                 👁 Мій профіль
@@ -208,7 +220,7 @@ export function Profile() {
                 )}
               </div>
               {user?.email && <div style={{ fontSize: 13, color: '#9A8060', marginBottom: 8 }}>{user.email}</div>}
-              {profile?.isProvider && !profile?.verified && (
+              {isPerformer && !profile?.verified && (
                 <div style={{ fontSize: 12, color: '#9A8060', marginBottom: 8 }}>Профіль ще не верифіковано</div>
               )}
               {profile?.bio
@@ -222,13 +234,13 @@ export function Profile() {
               </div>
             </div>
 
-            {/* Right: stats (only for providers) */}
-            {profile?.isProvider && (
+            {/* Right: stats (once skills are filled in) */}
+            {isPerformer && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0, borderLeft: '1px solid #F0EBE3', paddingLeft: 14 }}>
                 {[
-                  { val: profile.rating > 0 ? profile.rating.toFixed(1) : '—', label: 'Рейтинг' },
-                  { val: String(profile.jobsCompleted), label: 'Замовлень' },
-                  { val: profile.priceFrom && profile.priceTo ? `€${profile.priceFrom}–${profile.priceTo}` : profile.hourlyRate ? `€${profile.hourlyRate}/год` : '—', label: 'Ціна' },
+                  { val: profile?.rating && profile.rating > 0 ? profile.rating.toFixed(1) : '—', label: 'Рейтинг' },
+                  { val: String(profile?.jobsCompleted ?? 0), label: 'Замовлень' },
+                  { val: profile?.priceFrom && profile?.priceTo ? `€${profile.priceFrom}–${profile.priceTo}` : profile?.hourlyRate ? `€${profile.hourlyRate}/год` : '—', label: 'Ціна' },
                 ].map((s, i) => (
                   <div key={i} style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: 15, fontWeight: 800, color: '#1A1612', lineHeight: 1 }}>{s.val}</div>
@@ -249,6 +261,41 @@ export function Profile() {
                 <span key={s} style={{ padding: '7px 14px', borderRadius: 99, background: '#fff', color: '#1A1612', fontSize: 13, fontWeight: 600, boxShadow: '0 1px 4px rgba(0,0,0,.08)', border: '1.5px solid #EDE8DF' }}>{s}</span>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Payouts — connects a Stripe Express account so escrow can pay this performer out */}
+        {isPerformer && (
+          <div style={{ background: '#fff', borderRadius: 14, padding: '14px 16px', marginBottom: 12, border: '1.5px solid #EDE8DF' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#1A1612' }}>
+                  {profile?.stripeOnboarded ? '✅ Виплати підключено' : '💳 Підключити виплати'}
+                </div>
+                <div style={{ fontSize: 12, color: '#9A8060' }}>Потрібно, щоб отримувати оплату за виконані задачі</div>
+              </div>
+              {!profile?.stripeOnboarded && (
+                <button disabled={connectingPayouts} onClick={async () => {
+                  setConnectingPayouts(true); setConnectError('')
+                  try {
+                    const { url } = await createOnboardingLink({
+                      returnUrl: window.location.href,
+                      refreshUrl: window.location.href,
+                    })
+                    window.location.href = url
+                  } catch (e) {
+                    const raw = (e as Error)?.message ?? ''
+                    const clean = raw.match(/Uncaught Error: (.+?)(?:\s+at\s|$)/)?.[1] ?? raw
+                    setConnectError(clean.includes('STRIPE_SECRET_KEY') ? 'Виплати ще не налаштовані на платформі. Спробуй пізніше.' : (clean || 'Помилка підключення'))
+                  } finally {
+                    setConnectingPayouts(false)
+                  }
+                }} style={{ padding: '9px 16px', borderRadius: 12, border: 'none', background: '#1A1612', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit', flexShrink: 0 }}>
+                  {connectingPayouts ? '...' : 'Підключити'}
+                </button>
+              )}
+            </div>
+            {connectError && <div style={{ fontSize: 12, color: '#EF4444', marginTop: 8 }}>{connectError}</div>}
           </div>
         )}
 
@@ -354,19 +401,13 @@ export function Profile() {
                 />
               </div>
 
-              {/* Provider toggle */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', borderRadius: 14, padding: '14px 16px', marginBottom: 14, border: '1.5px solid #EDE8DF' }}>
-                <div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: '#1A1612' }}>Я виконавець</div>
-                  <div style={{ fontSize: 12, color: '#9A8060' }}>Показувати мій профіль замовникам</div>
-                </div>
-                <div onClick={() => setIsProvider(p => !p)} style={{ width: 50, height: 28, borderRadius: 99, background: isProvider ? '#EF9F27' : '#E5E5EA', cursor: 'pointer', position: 'relative', transition: 'background .2s', flexShrink: 0 }}>
-                  <div style={{ position: 'absolute', top: 3, left: isProvider ? 24 : 3, width: 22, height: 22, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,.2)', transition: 'left .2s' }} />
-                </div>
+              {/* Skills — filling any in makes this profile discoverable as a performer, no toggle needed */}
+              <div style={{ marginBottom: 4 }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#1A1612' }}>Навички та послуги</div>
+                <div style={{ fontSize: 12, color: '#9A8060', marginBottom: 14 }}>Додайте хоча б одну навичку, щоб клієнти могли знайти вас і надіслати задачу</div>
               </div>
 
-              {isProvider && (
-                <>
+              <>
                   <div style={{ marginBottom: 14 }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: '#9A8060', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Категорія</div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -412,8 +453,7 @@ export function Profile() {
                     <input value={availability} onChange={e => setAvailability(e.target.value)} placeholder="Наприклад: Пн–Пт, 9:00–18:00"
                       style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1.5px solid #EDE8DF', fontSize: 15, fontFamily: 'inherit', background: '#fff', outline: 'none', boxSizing: 'border-box', color: '#1A1612' }} />
                   </div>
-                </>
-              )}
+              </>
 
               {/* Company toggle */}
               <div style={{ height: 1, background: '#EDE8DF', margin: '4px 0 16px' }} />

@@ -84,10 +84,23 @@ export function EntryDetail() {
   const acceptProposal = useMutation(api.proposals.accept)
   const markDone = useMutation(api.proposals.markDone)
   const mockPay = useMutation(api.proposals.mockPay)
+  const disputeProposal = useMutation(api.proposals.dispute)
+  const proposeRequote = useMutation(api.proposals.proposeRequote)
+  const respondToRequote = useMutation(api.proposals.respondToRequote)
   const createReview = useMutation(api.reviews.create)
-  const [reviewModal, setReviewModal] = useState<{ proposalId: string; providerName: string } | null>(null)
+  const [reviewModal, setReviewModal] = useState<{ proposalId: string; revieweeName: string; tagOptions: string[] } | null>(null)
+  const TAGS_FOR_RATING_PROVIDER = ['Прийшов вчасно', 'Якісна робота', 'Ввічливий', 'Порадив би']
+  const TAGS_FOR_RATING_CLIENT = ['Чіткий опис', 'Оплатив вчасно', 'Ввічливий', 'Гнучкий графік']
+  const [disputeModal, setDisputeModal] = useState<{ proposalId: string } | null>(null)
+  const [disputeReasonText, setDisputeReasonText] = useState('')
+  const [disputeSubmitting, setDisputeSubmitting] = useState(false)
+  const [requoteFormOpen, setRequoteFormOpen] = useState(false)
+  const [requotePrice, setRequotePrice] = useState('')
+  const [requoteReasonText, setRequoteReasonText] = useState('')
+  const [requoteSubmitting, setRequoteSubmitting] = useState(false)
   const [reviewRating, setReviewRating] = useState(5)
   const [reviewComment, setReviewComment] = useState('')
+  const [reviewTags, setReviewTags] = useState<string[]>([])
   const [reviewSending, setReviewSending] = useState(false)
   const proposals = useQuery(api.proposals.listForEntry, id ? { entryId: id as Id<'entries'> } : 'skip') ?? []
   const myProposal = useQuery(api.proposals.myProposalForEntry, id ? { entryId: id as Id<'entries'> } : 'skip')
@@ -160,7 +173,7 @@ export function EntryDetail() {
     if (aiMatches !== null || loadingMatches || !id) return
     setLoadingMatches(true)
     findMatches({ entryId: id as Id<'entries'> })
-      .then(res => setAiMatches(res as typeof aiMatches))
+      .then(res => setAiMatches(res as unknown as typeof aiMatches))
       .catch(() => setAiMatches([]))
       .finally(() => setLoadingMatches(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -214,8 +227,8 @@ export function EntryDetail() {
       setSequencing(false)
     }
   }
-  const statusColor = entry.status === 'open' ? '#22C55E' : entry.status === 'draft' ? '#B4A898' : '#EF9F27'
-  const statusLabel = entry.status === 'open' ? 'Активно' : entry.status === 'draft' ? 'Чернетка' : entry.status === 'done' ? 'Виконано' : entry.status ?? ''
+  const statusColor = entry.status === 'open' ? '#22C55E' : entry.status === 'draft' ? '#B4A898' : entry.status === 'cancelled' ? '#EF4444' : '#EF9F27'
+  const statusLabel = entry.status === 'open' ? 'Активно' : entry.status === 'draft' ? 'Чернетка' : entry.status === 'done' ? 'Виконано' : entry.status === 'in_progress' ? 'У процесі' : entry.status === 'cancelled' ? 'Скасовано' : entry.status ?? ''
 
   const startEdit = () => {
     setTitle(entry.title ?? '')
@@ -309,7 +322,7 @@ export function EntryDetail() {
   return (
     <div style={{ fontFamily: 'system-ui,-apple-system,sans-serif', background: '#F5F4F1', minHeight: '100dvh' }}>
       {/* Nav */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: '#F5F4F1', borderBottom: '1px solid #EDE8DF', position: 'sticky', top: 0, zIndex: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: '#F5F4F1', borderBottom: '1px solid #EDE8DF', position: 'sticky', top: 0, zIndex: 60 }}>
         <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#9A8060', display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'inherit' }}>← Назад</button>
         <span style={{ fontSize: 16, fontWeight: 700, color: '#1A1612' }}>{isProject ? 'Проєкт' : 'Запис'}</span>
         <div style={{ position: 'relative' }}>
@@ -321,8 +334,8 @@ export function EntryDetail() {
           </>}
           {menuOpen && (
             <>
-              <div style={{ position: 'fixed', inset: 0, zIndex: 19 }} onClick={() => setMenuOpen(false)} />
-              <div style={{ position: 'absolute', right: 0, top: '100%', zIndex: 20, background: '#fff', borderRadius: 14, boxShadow: '0 4px 24px rgba(0,0,0,.14)', border: '1px solid #EDE8DF', minWidth: 180, overflow: 'hidden' }}>
+              <div style={{ position: 'fixed', inset: 0, zIndex: 61 }} onClick={() => setMenuOpen(false)} />
+              <div style={{ position: 'absolute', right: 0, top: '100%', zIndex: 62, background: '#fff', borderRadius: 14, boxShadow: '0 4px 24px rgba(0,0,0,.14)', border: '1px solid #EDE8DF', minWidth: 180, overflow: 'hidden' }}>
                 <button onClick={() => { setMenuOpen(false); startEdit() }}
                   style={{ width: '100%', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, color: '#1A1612', fontFamily: 'inherit', textAlign: 'left', fontWeight: 500 }}>
                   ✏️ Редагувати
@@ -353,6 +366,9 @@ export function EntryDetail() {
             </div>
           )}
           <h1 style={{ fontSize: 20, fontWeight: 800, color: '#1A1612', margin: '0 0 8px', lineHeight: 1.3 }}>{entry.title}</h1>
+          {entry.photoUrl && (
+            <img src={entry.photoUrl} alt="" style={{ width: '100%', maxHeight: 240, objectFit: 'cover', borderRadius: 14, margin: '0 0 12px' }} />
+          )}
           {entry.description && entry.description !== entry.title && (
             <p style={{ fontSize: 14, color: '#5A4A2E', lineHeight: 1.6, margin: '0 0 12px' }}>{entry.description}</p>
           )}
@@ -421,7 +437,7 @@ export function EntryDetail() {
                 setAiMatches(null)
                 setLoadingMatches(true)
                 findMatches({ entryId: id as Id<'entries'> })
-                  .then(res => setAiMatches(res as typeof aiMatches))
+                  .then(res => setAiMatches(res as unknown as typeof aiMatches))
                   .catch(() => setAiMatches([]))
                   .finally(() => setLoadingMatches(false))
               }} style={{ fontSize: 12, color: '#9A8060', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: 2, fontFamily: 'inherit' }}>
@@ -546,11 +562,11 @@ export function EntryDetail() {
             {proposals.map(p => {
               const statusLabel: Record<string, string> = {
                 pending: '⏳ Очікує', accepted: '✅ Прийнято', in_progress: '🔧 В роботі',
-                done: '🏁 Завершено', paid: '💰 Оплачено', rejected: '✗ Відхилено',
+                done: '🏁 Завершено', disputed: '⚠️ Спірна', paid: '💰 Оплачено', rejected: '✗ Відхилено',
               }
               const statusColor: Record<string, string> = {
                 pending: '#9A8060', accepted: '#22C55E', in_progress: '#EF9F27',
-                done: '#3B82F6', paid: '#8B5CF6', rejected: '#EF4444',
+                done: '#3B82F6', disputed: '#EF4444', paid: '#8B5CF6', rejected: '#EF4444',
               }
               return (
                 <div key={p._id} style={{ background: '#fff', borderRadius: 14, padding: '14px', border: '1.5px solid #EDE8DF', marginBottom: 10 }}>
@@ -568,6 +584,22 @@ export function EntryDetail() {
                   </div>
                   {p.price && <div style={{ fontSize: 16, fontWeight: 800, color: '#EF9F27', marginBottom: 4 }}>€{p.price}</div>}
                   <div style={{ fontSize: 13, color: '#5A4A2E', marginBottom: 10 }}>{p.message}</div>
+                  {p.requoteStatus === 'pending' && (
+                    <div style={{ background: '#FAEEDA', borderRadius: 12, padding: '10px 12px', marginBottom: 10 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#854F0B', marginBottom: 2 }}>💬 Нова ціна: €{p.requotedPrice}</div>
+                      <div style={{ fontSize: 12, color: '#854F0B', marginBottom: 8 }}>{p.requoteReason}</div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button onClick={() => respondToRequote({ proposalId: p._id, accept: false })}
+                          style={{ flex: 1, padding: '8px', borderRadius: 10, border: '1.5px solid #EDE8DF', background: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#5A4A2E', fontFamily: 'inherit' }}>
+                          Відхилити
+                        </button>
+                        <button onClick={() => respondToRequote({ proposalId: p._id, accept: true })}
+                          style={{ flex: 1, padding: '8px', borderRadius: 10, border: 'none', background: '#EF9F27', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: '#fff', fontFamily: 'inherit' }}>
+                          Прийняти
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button onClick={() => navigate(`/app/chat/${p.providerId}`)}
                       style={{ flex: 1, padding: '10px', borderRadius: 12, border: '1.5px solid #EDE8DF', background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#1A1612', fontFamily: 'inherit' }}>
@@ -580,13 +612,22 @@ export function EntryDetail() {
                       </button>
                     )}
                     {p.status === 'done' && (
-                      <button onClick={async () => { await mockPay({ proposalId: p._id }); setReviewModal({ proposalId: p._id, providerName: p.providerName }) }}
-                        style={{ flex: 1, padding: '10px', borderRadius: 12, border: 'none', background: '#8B5CF6', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: 'inherit' }}>
-                        💰 Оплатити €{p.price ?? '—'}
-                      </button>
+                      <>
+                        <button onClick={() => setDisputeModal({ proposalId: p._id })}
+                          style={{ padding: '10px 12px', borderRadius: 12, border: '1.5px solid #EDE8DF', background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#EF4444', fontFamily: 'inherit' }}>
+                          ⚠️ Оскаржити
+                        </button>
+                        <button onClick={async () => { await mockPay({ proposalId: p._id }); setReviewModal({ proposalId: p._id, revieweeName: p.providerName, tagOptions: TAGS_FOR_RATING_PROVIDER }) }}
+                          style={{ flex: 1, padding: '10px', borderRadius: 12, border: 'none', background: '#8B5CF6', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: 'inherit' }}>
+                          💰 Оплатити €{p.price ?? '—'}
+                        </button>
+                      </>
+                    )}
+                    {p.status === 'disputed' && (
+                      <div style={{ flex: 1, fontSize: 12, color: '#EF4444' }}>⚠️ Спір: {p.disputeReason}</div>
                     )}
                     {p.status === 'paid' && (
-                      <button onClick={() => setReviewModal({ proposalId: p._id, providerName: p.providerName })}
+                      <button onClick={() => setReviewModal({ proposalId: p._id, revieweeName: p.providerName, tagOptions: TAGS_FOR_RATING_PROVIDER })}
                         style={{ flex: 1, padding: '10px', borderRadius: 12, border: 'none', background: '#FF9500', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: 'inherit' }}>
                         ⭐ Залишити відгук
                       </button>
@@ -608,6 +649,37 @@ export function EntryDetail() {
               in_progress: (
                 <div>
                   <div style={{ fontSize: 14, color: '#EF9F27', fontWeight: 700, marginBottom: 10 }}>🔧 Робота в процесі</div>
+
+                  {myProposal.requoteStatus === 'pending' ? (
+                    <div style={{ fontSize: 13, color: '#9A8060', marginBottom: 10, padding: '10px 12px', background: '#FAEEDA', borderRadius: 10 }}>
+                      ⏳ Очікуємо відповідь клієнта на нову ціну €{myProposal.requotedPrice}
+                    </div>
+                  ) : requoteFormOpen ? (
+                    <div style={{ marginBottom: 10 }}>
+                      <input type="number" value={requotePrice} onChange={e => setRequotePrice(e.target.value)} placeholder="Нова ціна (€)"
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #EDE8DF', fontSize: 14, fontFamily: 'inherit', marginBottom: 6, boxSizing: 'border-box' }} />
+                      <textarea value={requoteReasonText} onChange={e => setRequoteReasonText(e.target.value)} placeholder="Чому обсяг більший за очікуваний?" rows={2}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #EDE8DF', fontSize: 14, fontFamily: 'inherit', resize: 'none', marginBottom: 6, boxSizing: 'border-box' }} />
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button onClick={() => setRequoteFormOpen(false)} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1.5px solid #EDE8DF', background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#5A4A2E', fontFamily: 'inherit' }}>Скасувати</button>
+                        <button disabled={requoteSubmitting || !requotePrice || !requoteReasonText.trim()} onClick={async () => {
+                          setRequoteSubmitting(true)
+                          try {
+                            await proposeRequote({ proposalId: myProposal._id, newPrice: Number(requotePrice), reason: requoteReasonText.trim() })
+                            setRequoteFormOpen(false); setRequotePrice(''); setRequoteReasonText('')
+                          } finally { setRequoteSubmitting(false) }
+                        }} style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: '#EF9F27', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: 'inherit' }}>
+                          {requoteSubmitting ? '...' : 'Надіслати'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button onClick={() => setRequoteFormOpen(true)}
+                      style={{ width: '100%', padding: '10px', borderRadius: 12, border: '1.5px solid #EDE8DF', background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#5A4A2E', fontFamily: 'inherit', marginBottom: 8 }}>
+                      💬 Змінити ціну (обсяг виявився іншим)
+                    </button>
+                  )}
+
                   <button onClick={() => markDone({ proposalId: myProposal._id })}
                     style={{ width: '100%', padding: '12px', borderRadius: 12, border: 'none', background: '#3B82F6', cursor: 'pointer', fontSize: 14, fontWeight: 700, color: '#fff', fontFamily: 'inherit' }}>
                     🏁 Позначити як завершено
@@ -615,7 +687,21 @@ export function EntryDetail() {
                 </div>
               ),
               done: <div style={{ fontSize: 14, color: '#3B82F6', fontWeight: 700 }}>🏁 Завершено — очікуємо оплату від клієнта</div>,
-              paid: <div style={{ fontSize: 14, color: '#8B5CF6', fontWeight: 700 }}>💰 Оплачено! Дякуємо за роботу.</div>,
+              disputed: (
+                <div>
+                  <div style={{ fontSize: 14, color: '#EF4444', fontWeight: 700, marginBottom: 4 }}>⚠️ Клієнт оскаржив виконання</div>
+                  <div style={{ fontSize: 13, color: '#9A8060' }}>{myProposal.disputeReason}</div>
+                </div>
+              ),
+              paid: (
+                <div>
+                  <div style={{ fontSize: 14, color: '#8B5CF6', fontWeight: 700, marginBottom: 10 }}>💰 Оплачено! Дякуємо за роботу.</div>
+                  <button onClick={() => setReviewModal({ proposalId: myProposal._id, revieweeName: 'клієнта', tagOptions: TAGS_FOR_RATING_CLIENT })}
+                    style={{ width: '100%', padding: '10px', borderRadius: 12, border: '1.5px solid #EDE8DF', background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#5A4A2E', fontFamily: 'inherit' }}>
+                    ⭐ Оцінити клієнта
+                  </button>
+                </div>
+              ),
               rejected: <div style={{ fontSize: 14, color: '#EF4444' }}>✗ Пропозицію відхилено</div>,
             }[myProposal.status]}
           </div>
@@ -699,10 +785,18 @@ export function EntryDetail() {
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(6px)' }} onClick={() => setReviewModal(null)} />
           <div style={{ position: 'relative', width: '100%', maxWidth: 480, zIndex: 301, background: '#F5F4F1', borderRadius: window.innerWidth > 500 ? 24 : '24px 24px 0 0', boxShadow: '0 8px 48px rgba(0,0,0,.28)', padding: '24px 16px', margin: window.innerWidth > 500 ? '0 16px' : 0 }}>
             <div style={{ fontSize: 18, fontWeight: 800, color: '#1A1612', marginBottom: 6 }}>Залишити відгук</div>
-            <div style={{ fontSize: 14, color: '#9A8060', marginBottom: 20 }}>{reviewModal.providerName}</div>
+            <div style={{ fontSize: 14, color: '#9A8060', marginBottom: 20 }}>{reviewModal.revieweeName}</div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
               {[1,2,3,4,5].map(star => (
                 <span key={star} onClick={() => setReviewRating(star)} style={{ fontSize: 36, cursor: 'pointer', opacity: star <= reviewRating ? 1 : 0.25, transition: 'opacity .15s' }}>⭐</span>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const, justifyContent: 'center', marginBottom: 16 }}>
+              {reviewModal.tagOptions.map(tag => (
+                <button key={tag} onClick={() => setReviewTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])}
+                  style={{ padding: '7px 14px', borderRadius: 99, border: `1.5px solid ${reviewTags.includes(tag) ? '#EF9F27' : '#EDE8DF'}`, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, background: reviewTags.includes(tag) ? '#EF9F27' : '#fff', color: reviewTags.includes(tag) ? '#fff' : '#5A4A2E' }}>
+                  {tag}
+                </button>
               ))}
             </div>
             <textarea value={reviewComment} onChange={e => setReviewComment(e.target.value)}
@@ -710,15 +804,42 @@ export function EntryDetail() {
               rows={3}
               style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1.5px solid #EDE8DF', fontSize: 15, outline: 'none', fontFamily: 'inherit', background: '#fff', resize: 'none', lineHeight: 1.5, boxSizing: 'border-box', marginBottom: 16 }} />
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setReviewModal(null)} style={{ flex: 1, padding: 14, borderRadius: 14, border: 'none', cursor: 'pointer', background: 'rgba(118,118,128,.12)', fontSize: 15, fontWeight: 500, color: '#3C3C43', fontFamily: 'inherit' }}>Пропустити</button>
+              <button onClick={() => { setReviewModal(null); setReviewTags([]) }} style={{ flex: 1, padding: 14, borderRadius: 14, border: 'none', cursor: 'pointer', background: 'rgba(118,118,128,.12)', fontSize: 15, fontWeight: 500, color: '#3C3C43', fontFamily: 'inherit' }}>Пропустити</button>
               <button disabled={reviewSending} onClick={async () => {
                 setReviewSending(true)
                 try {
-                  await createReview({ proposalId: reviewModal.proposalId as Id<'proposals'>, rating: reviewRating, comment: reviewComment || undefined })
-                  setReviewModal(null); setReviewComment(''); setReviewRating(5)
+                  await createReview({ proposalId: reviewModal.proposalId as Id<'proposals'>, rating: reviewRating, tags: reviewTags.length > 0 ? reviewTags : undefined, comment: reviewComment || undefined })
+                  setReviewModal(null); setReviewComment(''); setReviewRating(5); setReviewTags([])
                 } finally { setReviewSending(false) }
               }} style={{ flex: 2, padding: 14, borderRadius: 14, border: 'none', cursor: 'pointer', background: '#1A1612', fontSize: 15, fontWeight: 700, color: '#fff', fontFamily: 'inherit' }}>
                 {reviewSending ? 'Надсилаємо...' : '⭐ Відправити'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dispute modal */}
+      {disputeModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: window.innerWidth > 500 ? 'center' : 'flex-end', justifyContent: 'center' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(6px)' }} onClick={() => setDisputeModal(null)} />
+          <div style={{ position: 'relative', width: '100%', maxWidth: 480, zIndex: 301, background: '#F5F4F1', borderRadius: window.innerWidth > 500 ? 24 : '24px 24px 0 0', boxShadow: '0 8px 48px rgba(0,0,0,.28)', padding: '24px 16px', margin: window.innerWidth > 500 ? '0 16px' : 0 }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#1A1612', marginBottom: 6 }}>Оскаржити виконання</div>
+            <div style={{ fontSize: 13, color: '#9A8060', marginBottom: 16, lineHeight: 1.5 }}>Опишіть, що не так. Оплата не спишеться, поки спір не вирішено.</div>
+            <textarea value={disputeReasonText} onChange={e => setDisputeReasonText(e.target.value)}
+              placeholder="Наприклад: робота виконана не повністю..."
+              rows={3}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1.5px solid #EDE8DF', fontSize: 15, outline: 'none', fontFamily: 'inherit', background: '#fff', resize: 'none', lineHeight: 1.5, boxSizing: 'border-box', marginBottom: 16 }} />
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => { setDisputeModal(null); setDisputeReasonText('') }} style={{ flex: 1, padding: 14, borderRadius: 14, border: 'none', cursor: 'pointer', background: 'rgba(118,118,128,.12)', fontSize: 15, fontWeight: 500, color: '#3C3C43', fontFamily: 'inherit' }}>Скасувати</button>
+              <button disabled={disputeSubmitting || !disputeReasonText.trim()} onClick={async () => {
+                setDisputeSubmitting(true)
+                try {
+                  await disputeProposal({ proposalId: disputeModal.proposalId as Id<'proposals'>, reason: disputeReasonText.trim() })
+                  setDisputeModal(null); setDisputeReasonText('')
+                } finally { setDisputeSubmitting(false) }
+              }} style={{ flex: 2, padding: 14, borderRadius: 14, border: 'none', cursor: disputeReasonText.trim() ? 'pointer' : 'not-allowed', background: disputeReasonText.trim() ? '#EF4444' : '#C7C7CC', fontSize: 15, fontWeight: 700, color: '#fff', fontFamily: 'inherit' }}>
+                {disputeSubmitting ? 'Надсилаємо...' : '⚠️ Подати спір'}
               </button>
             </div>
           </div>

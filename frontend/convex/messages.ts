@@ -3,6 +3,16 @@ import { getAuthUserId } from "@convex-dev/auth/server"
 import { v } from "convex/values"
 import { internal } from "./_generated/api"
 
+// Soft signal only — never blocks the message. The goal is to nudge people to keep
+// deals (and the payment guarantee) on-platform, not to police them out of a real chat.
+const PHONE_RE = /(\+?\d[\d\-\s()]{6,}\d)/
+const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/
+const CONTACT_APP_RE = /telegram|viber|whatsapp|вайбер|телеграм|вотсап|вацап|instagram|@[a-z0-9_]{4,}/i
+
+function looksLikeContactInfo(text: string): boolean {
+  return PHONE_RE.test(text) || EMAIL_RE.test(text) || CONTACT_APP_RE.test(text)
+}
+
 // All conversations for current user (unique partners)
 export const listConversations = query({
   args: {},
@@ -58,7 +68,8 @@ export const send = mutation({
     const userId = await getAuthUserId(ctx)
     if (!userId) throw new Error("Not authenticated")
 
-    await ctx.db.insert("messages", { fromId: userId, toId, text, read: false, entryId })
+    const flaggedContact = looksLikeContactInfo(text)
+    await ctx.db.insert("messages", { fromId: userId, toId, text, read: false, entryId, flaggedContact })
 
     // Push notification to recipient
     const recipientSubs = await ctx.db
@@ -75,6 +86,8 @@ export const send = mutation({
         url: `/app/chat/${userId}`,
       })
     }
+
+    return { flaggedContact }
   },
 })
 
