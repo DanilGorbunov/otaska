@@ -1,4 +1,4 @@
-# OTaska
+# Taskont
 
 AI-native marketplace for everyday services — post a task, get matched, get it done.
 

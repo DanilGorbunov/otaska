@@ -113,7 +113,7 @@ export const createEscrowCheckout = action({
       line_items: [{
         price_data: {
           currency: "eur",
-          product_data: { name: proposal.entryTitle ?? "OTaska task" },
+          product_data: { name: proposal.entryTitle ?? "Taskont task" },
           unit_amount: Math.round(proposal.price * 100),
         },
         quantity: 1,

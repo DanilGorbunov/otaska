@@ -17,7 +17,7 @@ function buildSystemPrompt(locale: string): string {
   return SYSTEM_PROMPT_TEMPLATE.replace("{{LANGUAGE}}", language)
 }
 
-const SYSTEM_PROMPT_TEMPLATE = `Ти — AI-помічник платформи OTaska (маркетплейс послуг — будь-які категорії: будівництво, прибирання, переїзди, репетиторство, ІТ, організація подій, краса, догляд за тваринами, авто тощо, не лише будівництво).
+const SYSTEM_PROMPT_TEMPLATE = `Ти — AI-помічник платформи Taskont (маркетплейс послуг — будь-які категорії: будівництво, прибирання, переїзди, репетиторство, ІТ, організація подій, краса, догляд за тваринами, авто тощо, не лише будівництво).
 Категорію визнач з тексту самостійно, вільно — не обмежуйся заздалегідь заданим переліком.
 Користувач написав свій запит. ПЕРШЕ що ти маєш зробити — визначити ХТО ПИШЕ.
 
@@ -152,7 +152,7 @@ export const parseProjectFull = action({
     if (!apiKey) throw new Error("OPENAI_API_KEY not set")
 
     const language = RESPONSE_LANGUAGE[locale ?? "en"] ?? RESPONSE_LANGUAGE.en
-    const system = `Ти — AI-помічник платформи OTaska. Користувач описує свій проєкт.
+    const system = `Ти — AI-помічник платформи Taskont. Користувач описує свій проєкт.
 Пиши projectTitle і назви тасків мовою: ${language} — незалежно від того, якою мовою написав користувач.
 Витягни з тексту:
 1. Назву проєкту (коротко, до 60 символів)
@@ -213,7 +213,7 @@ export const parseProjectTasks = action({
     const apiKey = process.env.OPENAI_API_KEY
     if (!apiKey) throw new Error("OPENAI_API_KEY not set")
 
-    const system = `Ти — AI-помічник платформи OTaska. Користувач описує завдання для свого проєкту "${projectTitle}"${projectCity ? ` у місті ${projectCity}` : ''}.
+    const system = `Ти — AI-помічник платформи Taskont. Користувач описує завдання для свого проєкту "${projectTitle}"${projectCity ? ` у місті ${projectCity}` : ''}.
 Розбий текст на окремі завдання. Кожне завдання — окремий виконавець або тип роботи.
 
 Повертай ТІЛЬКИ JSON:
@@ -277,7 +277,7 @@ export const findMatches = action({
       `[${i}] id=${o._id} | ${o.title} | ${o.description ?? ''} | місто: ${o.city ?? '?'} | категорія: ${o.category ?? '?'} | тип: ${o.intentType}`
     ).join('\n')
 
-    const prompt = `Ти — AI-матчер платформи OTaska. Твоя задача — знайти релевантні пропозиції для запису.
+    const prompt = `Ти — AI-матчер платформи Taskont. Твоя задача — знайти релевантні пропозиції для запису.
 
 ЗАПИС КОРИСТУВАЧА:
 ${entryDesc}
@@ -341,7 +341,7 @@ export const diagnosePhoto = action({
     if (!imageUrl) throw new Error("Photo not found")
 
     const language = RESPONSE_LANGUAGE[locale ?? "en"] ?? RESPONSE_LANGUAGE.en
-    const system = `Ти — AI-експерт платформи OTaska (маркетплейс побутових послуг). Пиши категорію і терміновість мовою: ${language}.
+    const system = `Ти — AI-експерт платформи Taskont (маркетплейс побутових послуг). Пиши категорію і терміновість мовою: ${language}.
 Користувач надіслав фото проблеми (протікання, тріщина, поламка тощо). Визнач:
 1. Категорію робіт (Електрика, Сантехніка, Ремонт, Малярство, Плитка, Теслярство, Будівництво, Інше)
 2. Терміновість ("Терміново", "Протягом тижня", "Не терміново")
@@ -387,7 +387,7 @@ export const sequenceProjectTasks = action({
 
     const list = tasks.map((t, i) => `[${i}] id=${t._id} | ${t.title} | категорія: ${t.category ?? '?'}`).join('\n')
 
-    const system = `Ти — AI-асистент генпідрядника платформи OTaska. Визнач стандартну послідовність виконання будівельних завдань проєкту (наприклад: сантехніка до плитки, електрика до гіпсокартону, штукатурка до фарбування).
+    const system = `Ти — AI-асистент генпідрядника платформи Taskont. Визнач стандартну послідовність виконання будівельних завдань проєкту (наприклад: сантехніка до плитки, електрика до гіпсокартону, штукатурка до фарбування).
 
 ЗАВДАННЯ ПРОЄКТУ:
 ${list}

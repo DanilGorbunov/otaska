@@ -1,6 +1,6 @@
 {
-  "name": "OTaska",
-  "short_name": "OTaska",
+  "name": "Taskont",
+  "short_name": "Taskont",
   "description": "Знайди майстра або роботу",
   "start_url": "/app",
   "display": "standalone",

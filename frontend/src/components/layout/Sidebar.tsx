@@ -1,6 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
+import { Logo } from './Logo'
 
 const navItems = [
   {
@@ -55,11 +56,8 @@ export function Sidebar() {
       borderRight: '1px solid rgba(255,255,255,.06)',
     }}>
       {/* Logo */}
-      <div style={{ padding: '0 8px 28px', display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{ width: 32, height: 32, borderRadius: 10, background: '#EF9F27', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 18, color: '#fff', fontFamily: 'inherit' }}>
-          O
-        </div>
-        <span style={{ fontWeight: 800, fontSize: 18, color: '#fff', letterSpacing: -.3 }}>OTaska</span>
+      <div style={{ padding: '0 8px 28px' }}>
+        <Logo size={30} onDark />
       </div>
 
       {/* New button */}

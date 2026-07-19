@@ -5,6 +5,7 @@ import { useAuthActions } from '@convex-dev/auth/react'
 import { useMutation, useAction } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { CATEGORIES } from '../lib/categories'
+import { Logo } from '../components/layout/Logo'
 
 type Step = 1 | 2
 
@@ -238,13 +239,6 @@ export function Landing() {
     </div>
   )
 
-  const Hex = ({ size = 64 }: { size?: number }) => (
-    <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
-      <polygon points="16,1.5 28.5,8.75 28.5,23.25 16,30.5 3.5,23.25 3.5,8.75" fill="var(--accent)" stroke="var(--accent-strong)" strokeWidth="1" />
-      <polyline points="9,16.5 13.5,21.5 23,10.5" stroke="var(--text-primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-
   const QuestionMark = () => (
     <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
       <path d="M11 10C11 7.2 13.2 5 16 5C18.8 5 21 7.2 21 10C21 12.8 18.8 14 16 14V17" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" />
@@ -270,12 +264,8 @@ export function Landing() {
       {/* NAV */}
       <nav style={S.nav}>
         <div style={S.navInner}>
-          <a href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
-            <Hex size={28} />
-            <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-.3px' }}>
-              <span style={{ color: 'var(--accent)', fontWeight: 800 }}>O</span>
-              <span style={{ color: 'var(--text-primary)' }}>Taska</span>
-            </span>
+          <a href="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+            <Logo size={28} />
           </a>
           <Dots />
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
