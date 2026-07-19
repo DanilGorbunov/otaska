@@ -11,6 +11,7 @@
 import type * as ai from "../ai.js";
 import type * as analytics from "../analytics.js";
 import type * as auth from "../auth.js";
+import type * as config from "../config.js";
 import type * as entries from "../entries.js";
 import type * as http from "../http.js";
 import type * as messages from "../messages.js";
@@ -31,6 +32,7 @@ declare const fullApi: ApiFromModules<{
   ai: typeof ai;
   analytics: typeof analytics;
   auth: typeof auth;
+  config: typeof config;
   entries: typeof entries;
   http: typeof http;
   messages: typeof messages;

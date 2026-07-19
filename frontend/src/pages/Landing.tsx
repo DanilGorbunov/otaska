@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuthActions } from '@convex-dev/auth/react'
 import { useMutation, useAction } from 'convex/react'
 import { api } from '../../convex/_generated/api'
@@ -7,28 +8,39 @@ import { CATEGORIES } from '../lib/categories'
 
 type Step = 1 | 2
 
-interface ChatMsg { role: 'user' | 'assistant'; content: string; card?: AIResult; cardIndex?: number }
+interface ChatMsg { role: 'user' | 'assistant'; content: string; card?: AIResult; cardIndex?: number; kind?: 'reg' }
 interface AIResult {
   emoji: string; category: string; title: string; details: string
   budgetMin: number; budgetMax: number
   intentType: string; entryType: string
 }
 
-const TAGS = [
-  { label: '🔧 Шукаю майстра',    fill: 'Шукаю майстра для ремонту в квартирі' },
-  { label: '🪨 Шукаю матеріали',  fill: 'Потрібен щебінь 40т для будівництва' },
-  { label: '💼 Пропоную послугу', fill: 'Роблю електрику — доступний з понеділка' },
-  { label: '👷 Шукаю роботу',     fill: 'Шукаю роботу будівельника, досвід 5 років' },
-]
-
-const STEP_NAMES = ['ПИШУ', 'AI', 'РЕЄСТРАЦІЯ']
-
 // ─── Component ───────────────────────────────────────────────────────────────
 export function Landing() {
   const navigate = useNavigate()
+  const { t, i18n } = useTranslation()
   const { signIn } = useAuthActions()
   const createAndPublish = useMutation(api.entries.createAndPublish)
   const callAI = useAction(api.ai.chat)
+
+  const TAGS = [
+    { label: t('landing.tags.master.label'), fill: t('landing.tags.master.fill') },
+    { label: t('landing.tags.materials.label'), fill: t('landing.tags.materials.fill') },
+    { label: t('landing.tags.service.label'), fill: t('landing.tags.service.fill') },
+    { label: t('landing.tags.job.label'), fill: t('landing.tags.job.fill') },
+  ]
+
+  const STEP_NAMES = [t('landing.step.write'), t('landing.step.ai'), t('landing.step.signup')]
+
+  const REG_QUESTIONS = [
+    { key: 'name', question: t('landing.reg.nameQuestion'), type: 'text', placeholder: t('landing.reg.namePlaceholder') },
+    { key: 'email', question: t('landing.reg.emailQuestion'), type: 'email', placeholder: 'your@email.com' },
+    { key: 'password', question: t('landing.reg.passwordQuestion'), type: 'password', placeholder: '••••••••' },
+  ]
+
+  const toggleLocale = () => {
+    i18n.changeLanguage(i18n.language === 'uk' ? 'en' : 'uk')
+  }
 
   const [step, setStep]         = useState<Step>(1)
   const [task, setTask]         = useState('')
@@ -50,17 +62,15 @@ export function Landing() {
   const [secondAiResult, setSecondAiResult] = useState<AIResult | null>(null)
   const [secondGoalMode, setSecondGoalMode] = useState(false)
 
-  const REG_QUESTIONS = [
-    { key: 'name',     question: 'Як тебе звати?',                      type: 'text',     placeholder: "Ім'я" },
-    { key: 'email',    question: 'Твій email?',                         type: 'email',    placeholder: 'your@email.com' },
-    { key: 'password', question: 'Придумай пароль (мін. 8 символів)',   type: 'password', placeholder: '••••••••' },
-  ]
-
   const startRegFields = () => {
     setRegMode(true)
     setRegStep(0)
     setForm({ name: '', email: '', password: '', city: '' })
-    setMsgs(prev => [...prev, { role: 'assistant', content: REG_QUESTIONS[0].question }])
+    setMsgs(prev => [
+      ...prev,
+      { role: 'assistant', content: t('landing.chat.signupBridge'), kind: 'reg' },
+      { role: 'assistant', content: REG_QUESTIONS[0].question, kind: 'reg' },
+    ])
     setChips([])
   }
 
@@ -69,7 +79,7 @@ export function Landing() {
     try {
       // filter out card-only messages (empty content) before sending to AI
       const apiMessages = messages.filter(m => m.content.trim() !== '')
-      const raw = await callAI({ messages: apiMessages })
+      const raw = await callAI({ messages: apiMessages, locale: i18n.language })
       const parsed = JSON.parse(raw as string)
       const assistantMsg: ChatMsg = { role: 'assistant', content: parsed.message }
       setMsgs(prev => [...prev, assistantMsg])
@@ -88,7 +98,7 @@ export function Landing() {
         }
       }
     } catch {
-      setMsgs(prev => [...prev, { role: 'assistant', content: 'Щось пішло не так. Спробуй ще раз.' }])
+      setMsgs(prev => [...prev, { role: 'assistant', content: t('landing.chat.error') }])
     } finally {
       setChatLoading(false)
     }
@@ -137,7 +147,7 @@ export function Landing() {
 
   const handleAddSecondGoal = () => {
     setSecondGoalMode(true)
-    setMsgs(prev => [...prev, { role: 'assistant', content: 'Опиши другу ціль' }])
+    setMsgs(prev => [...prev, { role: 'assistant', content: t('landing.chat.secondGoalPrompt') }])
   }
 
   useEffect(() => {
@@ -149,14 +159,14 @@ export function Landing() {
     const val = chatInput.trim()
     if (!val) return
     if (field.key === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
-      setError('Невірний email'); return
+      setError(t('landing.reg.errorEmail')); return
     }
     if (field.key === 'password' && val.length < 8) {
-      setError('Мінімум 8 символів'); return
+      setError(t('landing.reg.errorPassword')); return
     }
     setError('')
     const displayVal = field.key === 'password' ? '••••••••' : val
-    setMsgs(prev => [...prev, { role: 'user', content: displayVal }])
+    setMsgs(prev => [...prev, { role: 'user', content: displayVal, kind: 'reg' }])
     setForm(prev => ({ ...prev, [field.key]: val }))
     setChatInput('')
 
@@ -165,14 +175,14 @@ export function Landing() {
     if (regStep < REG_QUESTIONS.length - 1) {
       const next = REG_QUESTIONS[regStep + 1]
       setTimeout(() => {
-        setMsgs(prev => [...prev, { role: 'assistant', content: next.question }])
+        setMsgs(prev => [...prev, { role: 'assistant', content: next.question, kind: 'reg' }])
         setRegStep(s => s + 1)
       }, 300)
     } else {
       // all fields collected → register (or just publish if already authenticated)
       setTimeout(async () => {
         const goalCount = secondAiResult ? 2 : 1
-        setMsgs(prev => [...prev, { role: 'assistant', content: `Публікуємо ${goalCount === 2 ? 'твої цілі' : 'твій запис'}…` }])
+        setMsgs(prev => [...prev, { role: 'assistant', content: goalCount === 2 ? t('landing.chat.publishingTwo') : t('landing.chat.publishingOne'), kind: 'reg' }])
         setAuthLoading(true)
         try {
           const city = updatedForm.city || 'Bratislava'
@@ -188,7 +198,7 @@ export function Landing() {
           navigate('/app', { state: { newRegistration: { city, name: updatedForm.name } } })
         } catch (err: unknown) {
           const msg = (err as Error)?.message ?? ''
-          setMsgs(prev => [...prev, { role: 'assistant', content: msg.includes('already') ? 'Цей email вже зареєстровано. Спробуй увійти.' : 'Помилка реєстрації. Спробуй ще раз.' }])
+          setMsgs(prev => [...prev, { role: 'assistant', content: msg.includes('already') ? t('landing.chat.emailTaken') : t('landing.chat.registerError'), kind: 'reg' }])
           setRegMode(false)
         } finally {
           setAuthLoading(false)
@@ -246,6 +256,13 @@ export function Landing() {
     </svg>
   )
 
+  const UserIcon = () => (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="8" cy="5.2" r="2.6" />
+      <path d="M2.8 13.2c.9-2.6 2.9-4 5.2-4s4.3 1.4 5.2 4" />
+    </svg>
+  )
+
   return (
     <div style={S.page}>
       {/* NAV */}
@@ -259,9 +276,18 @@ export function Landing() {
             </span>
           </a>
           <Dots />
-          <button onClick={() => navigate('/login')} style={{ fontSize: 14, fontWeight: 500, color: '#9A8060', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'system-ui' }}>
-            Увійти
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <button onClick={toggleLocale} aria-label="Switch language" style={{
+              fontSize: 13, fontWeight: 600, color: '#9A8060', background: '#fff',
+              border: '1px solid #EDE8DF', borderRadius: 99, padding: '5px 10px',
+              cursor: 'pointer', fontFamily: 'system-ui',
+            }}>
+              {i18n.language === 'uk' ? 'EN' : 'UA'}
+            </button>
+            <button onClick={() => navigate('/login')} style={{ fontSize: 14, fontWeight: 500, color: '#9A8060', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'system-ui' }}>
+              {t('landing.login')}
+            </button>
+          </div>
         </div>
       </nav>
 
@@ -269,10 +295,10 @@ export function Landing() {
       {step === 1 && (
         <div style={{ ...S.wrap, padding: '60px 20px 80px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
 <h1 style={{ fontSize: 'clamp(40px,7vw,72px)', fontWeight: 800, lineHeight: 1.05, letterSpacing: -2, color: '#1A1612', marginBottom: 14 }}>
-            Просто напиши<br /><span style={{ color: '#EF9F27' }}>задачу.</span>
+            {t('landing.hero.title1')}<br /><span style={{ color: '#EF9F27' }}>{t('landing.hero.title2')}</span>
           </h1>
           <p style={{ fontSize: 17, color: '#9A8060', lineHeight: 1.65, marginBottom: 36, maxWidth: 460 }}>
-            Потрібно щось зробити? Шукаєш роботу?<br />Напиши як нотатку — ми зробимо решту.
+            {t('landing.hero.subtitle1')}<br />{t('landing.hero.subtitle2')}
           </p>
 
           <div style={{ width: '100%', marginBottom: 16 }}>
@@ -289,7 +315,7 @@ export function Landing() {
                 onChange={e => { setTask(e.target.value); setAiResult(null) }}
                 onFocus={() => setFocused(true)}
                 onBlur={() => setFocused(false)}
-                placeholder="сантехнік, доступний пн–пт..."
+                placeholder={t('landing.form.placeholder')}
                 rows={4}
                 style={{ width: '100%', fontSize: 18, color: '#1A1612', border: 'none', outline: 'none', resize: 'none', background: 'transparent', lineHeight: 1.55, fontFamily: 'inherit' }}
               />
@@ -298,14 +324,14 @@ export function Landing() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
                   {task.length >= 6 && aiResult ? (
                     <span style={{ color: '#EF9F27', fontWeight: 600 }}>
-                      {aiResult.emoji} {aiResult.category === 'Послуга' ? 'Розпізнано' : aiResult.category}
+                      {aiResult.emoji} {aiResult.category === t('landing.chat.categoryGeneric') ? t('landing.form.recognized') : aiResult.category}
                     </span>
                   ) : (
                     <>
                       {['0s', '.2s', '.4s'].map((d, i) => (
                         <span key={i} style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: '#EF9F27', animation: `dotA 1.3s ease-in-out ${d} infinite` }} />
                       ))}
-                      <span style={{ color: '#B4A898', marginLeft: 2 }}>AI розпізнає намір</span>
+                      <span style={{ color: '#B4A898', marginLeft: 2 }}>{t('landing.form.recognizing')}</span>
                     </>
                   )}
                 </div>
@@ -320,21 +346,21 @@ export function Landing() {
                     fontFamily: 'system-ui', fontSize: 15, fontWeight: 600, transition: 'all .18s',
                   }}
                 >
-                  Далі →
+                  {t('landing.form.next')}
                 </button>
               </div>
             </div>
           </div>
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
-            {TAGS.map(t => (
-              <button key={t.label}
-                onClick={() => { setTask(t.fill); setAiResult(null); textareaRef.current?.focus() }}
+            {TAGS.map(tag => (
+              <button key={tag.label}
+                onClick={() => { setTask(tag.fill); setAiResult(null); textareaRef.current?.focus() }}
                 style={{ padding: '8px 16px', borderRadius: 20, background: '#fff', border: '1px solid #EDE8DF', fontSize: 14, color: '#5A4A2E', cursor: 'pointer', fontWeight: 500, fontFamily: 'system-ui' }}
                 onMouseOver={e => { e.currentTarget.style.borderColor = '#EF9F27'; e.currentTarget.style.color = '#EF9F27' }}
                 onMouseOut={e => { e.currentTarget.style.borderColor = '#EDE8DF'; e.currentTarget.style.color = '#5A4A2E' }}
               >
-                {t.label}
+                {tag.label}
               </button>
             ))}
           </div>
@@ -346,13 +372,13 @@ export function Landing() {
         <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100dvh - 57px)', maxWidth: 640, margin: '0 auto', width: '100%' }}>
           {/* Chat messages */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '20px 16px 0' }}>
-            <button onClick={() => setStep(1)} style={S.back}><BackArrow /> Назад</button>
+            <button onClick={() => setStep(1)} style={S.back}><BackArrow /> {t('landing.chat.back')}</button>
 
             {msgs.map((m, i) => m.card ? (
               <div key={i}>
                 <div style={{ background: '#fff', border: '2px solid #EF9F27', borderRadius: 16, padding: '12px 16px', marginBottom: 8, boxShadow: '0 4px 20px rgba(239,159,39,.12)' }}>
                   <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, color: '#B4924A', textTransform: 'uppercase', marginBottom: 6 }}>
-                    Ціль{secondAiResult ? ` ${(m.cardIndex ?? 0) + 1}` : ''}
+                    {t('landing.chat.goal')}{secondAiResult ? ` ${(m.cardIndex ?? 0) + 1}` : ''}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                     <span style={{ fontSize: 20 }}>{m.card.emoji}</span>
@@ -386,36 +412,50 @@ export function Landing() {
 
                 {/* Action buttons — only under the latest first-goal card, before reg starts */}
                 {(m.cardIndex ?? 0) === 0 && i === msgs.length - 1 && !secondAiResult && !regMode && !secondGoalMode && (
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 4, alignItems: 'flex-start' }}>
                     <button onClick={handleAddSecondGoal}
                       style={{ flex: 1, padding: '10px', borderRadius: 12, border: '1.5px solid #EDE8DF', background: '#fff', color: '#5A4A2E', fontSize: 13, fontWeight: 600, fontFamily: 'system-ui', cursor: 'pointer' }}>
-                      + Додати ще одну ціль
+                      {t('landing.chat.addGoal')}
                     </button>
-                    <button onClick={startRegFields}
-                      style={{ flex: 1.4, padding: '10px', borderRadius: 12, border: 'none', background: '#1A1612', color: '#fff', fontSize: 13, fontWeight: 700, fontFamily: 'system-ui', cursor: 'pointer' }}>
-                      Опублікувати →
-                    </button>
+                    <div style={{ flex: 1.4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                      <button onClick={startRegFields}
+                        style={{ width: '100%', padding: '10px', borderRadius: 12, border: 'none', background: '#1A1612', color: '#fff', fontSize: 13, fontWeight: 700, fontFamily: 'system-ui', cursor: 'pointer' }}>
+                        {t('landing.chat.publish')}
+                      </button>
+                      <span style={{ fontSize: 11, color: '#9A8060' }}>{t('landing.reg.publishNote')}</span>
+                    </div>
                   </div>
                 )}
               </div>
             ) : (
-              <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start', marginBottom: 12 }}>
-                {m.role === 'assistant' && (
-                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#EF9F27', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 8, flexShrink: 0, marginTop: 2 }}>
-                    <span style={{ fontSize: 14 }}>✦</span>
+              <div key={i}>
+                {m.kind === 'reg' && (i === 0 || msgs[i - 1].kind !== 'reg') && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0 12px' }}>
+                    <div style={{ flex: 1, height: 1, background: '#EDE8DF' }} />
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.4px', color: '#9A8060', textTransform: 'uppercase' as const }}>
+                      {t('landing.chat.accountSetup')}
+                    </span>
+                    <div style={{ flex: 1, height: 1, background: '#EDE8DF' }} />
                   </div>
                 )}
-                <div style={{
-                  maxWidth: '78%',
-                  padding: '12px 16px',
-                  borderRadius: m.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                  background: m.role === 'user' ? '#1A1612' : '#fff',
-                  color: m.role === 'user' ? '#fff' : '#1A1612',
-                  fontSize: 15, lineHeight: 1.5,
-                  border: m.role === 'assistant' ? '1.5px solid #EDE8DF' : 'none',
-                  boxShadow: '0 1px 4px rgba(0,0,0,.06)',
-                }}>
-                  {m.content}
+                <div style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start', marginBottom: 12 }}>
+                  {m.role === 'assistant' && (
+                    <div style={{ width: 28, height: 28, borderRadius: '50%', background: m.kind === 'reg' ? '#1A1612' : '#EF9F27', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 8, flexShrink: 0, marginTop: 2 }}>
+                      {m.kind === 'reg' ? <UserIcon /> : <span style={{ fontSize: 14 }}>✦</span>}
+                    </div>
+                  )}
+                  <div style={{
+                    maxWidth: '78%',
+                    padding: '12px 16px',
+                    borderRadius: m.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                    background: m.role === 'user' ? '#1A1612' : '#fff',
+                    color: m.role === 'user' ? '#fff' : '#1A1612',
+                    fontSize: 15, lineHeight: 1.5,
+                    border: m.role === 'assistant' ? (m.kind === 'reg' ? '1.5px solid #1A1612' : '1.5px solid #EDE8DF') : 'none',
+                    boxShadow: '0 1px 4px rgba(0,0,0,.06)',
+                  }}>
+                    {m.content}
+                  </div>
                 </div>
               </div>
             ))}
@@ -458,7 +498,7 @@ export function Landing() {
                   type={regMode ? REG_QUESTIONS[regStep]?.type : 'text'}
                   value={chatInput}
                   onChange={e => { setChatInput(e.target.value); setError('') }}
-                  placeholder={regMode ? REG_QUESTIONS[regStep]?.placeholder : 'або напиши свою відповідь...'}
+                  placeholder={regMode ? REG_QUESTIONS[regStep]?.placeholder : t('landing.chat.inputPlaceholder')}
                   autoFocus={regMode}
                   autoComplete={regMode && REG_QUESTIONS[regStep]?.key === 'password' ? 'new-password' : regMode && REG_QUESTIONS[regStep]?.key === 'email' ? 'email' : 'off'}
                   style={{ flex: 1, padding: '12px 16px', borderRadius: 12, border: '1.5px solid #EDE8DF', fontSize: 15, outline: 'none', fontFamily: 'inherit', background: '#fff' }}

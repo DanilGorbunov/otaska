@@ -1,4 +1,51 @@
 {
   "nav": { "entries": "Entries", "browse": "Browse", "chat": "Chat", "profile": "Profile" },
-  "common": { "loading": "Loading...", "cancel": "Cancel", "save": "Save", "search": "Search..." }
+  "common": { "loading": "Loading...", "cancel": "Cancel", "save": "Save", "search": "Search..." },
+  "landing": {
+    "login": "Log in",
+    "step": { "write": "WRITE", "ai": "AI", "signup": "SIGN UP" },
+    "hero": {
+      "title1": "Just write",
+      "title2": "the task.",
+      "subtitle1": "Need something done? Looking for work?",
+      "subtitle2": "Write it like a note — we'll do the rest."
+    },
+    "form": {
+      "placeholder": "plumber, available Mon–Fri...",
+      "recognizing": "AI is recognizing intent",
+      "recognized": "Recognized",
+      "next": "Next →"
+    },
+    "tags": {
+      "master": { "label": "🔧 Looking for a pro", "fill": "Looking for a plumber for a home repair" },
+      "materials": { "label": "🪨 Looking for materials", "fill": "Need 40t of gravel for construction" },
+      "service": { "label": "💼 Offering a service", "fill": "I do electrical work — available from Monday" },
+      "job": { "label": "👷 Looking for work", "fill": "Looking for construction work, 5 years experience" }
+    },
+    "chat": {
+      "back": "Back",
+      "goal": "Goal",
+      "addGoal": "+ Add another goal",
+      "publish": "Publish →",
+      "inputPlaceholder": "or type your own answer...",
+      "error": "Something went wrong. Try again.",
+      "publishingOne": "Publishing your entry…",
+      "publishingTwo": "Publishing your goals…",
+      "secondGoalPrompt": "Describe your second goal",
+      "emailTaken": "This email is already registered. Try logging in.",
+      "registerError": "Registration error. Try again.",
+      "categoryGeneric": "Service",
+      "signupBridge": "Ready to publish! To let providers reach you, let's quickly set up your account — 3 short questions.",
+      "accountSetup": "Account setup"
+    },
+    "reg": {
+      "publishNote": "Free, takes 10 seconds",
+      "nameQuestion": "What's your name?",
+      "namePlaceholder": "Name",
+      "emailQuestion": "Your email?",
+      "passwordQuestion": "Create a password (min. 8 characters)",
+      "errorEmail": "Invalid email",
+      "errorPassword": "Minimum 8 characters"
+    }
+  }
 }

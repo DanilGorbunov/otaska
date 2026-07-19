@@ -16,9 +16,12 @@ export const SUPPORTED_LOCALES = [
   { code: 'en', label: 'English' },
 ] as const
 
+const LOCALE_STORAGE_KEY = 'otaska_locale'
+
 function detectLocale(): string {
-  const browserLang = navigator.language.slice(0, 2)
-  return SUPPORTED_LOCALES.some(l => l.code === browserLang) ? browserLang : 'uk'
+  const saved = localStorage.getItem(LOCALE_STORAGE_KEY)
+  if (saved && SUPPORTED_LOCALES.some(l => l.code === saved)) return saved
+  return 'en'
 }
 
 i18n.use(initReactI18next).init({
@@ -31,9 +34,13 @@ i18n.use(initReactI18next).init({
     en: { common: en },
   },
   lng: detectLocale(),
-  fallbackLng: 'uk',
+  fallbackLng: 'en',
   defaultNS: 'common',
   interpolation: { escapeValue: false },
+})
+
+i18n.on('languageChanged', (lng) => {
+  localStorage.setItem(LOCALE_STORAGE_KEY, lng)
 })
 
 export default i18n
