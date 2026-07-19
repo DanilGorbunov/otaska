@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useMutation } from 'convex/react'
 import {
-  DndContext, DragOverlay, MouseSensor, TouchSensor, useSensor, useSensors, useDraggable, useDroppable,
+  DndContext, DragOverlay, MouseSensor, TouchSensor, useSensor, useSensors,
   type DragEndEvent, type DragStartEvent,
 } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
 
@@ -17,13 +18,14 @@ export function Dashboard() {
   const updateEntry = useMutation(api.entries.update)
   const removeEntry = useMutation(api.entries.remove)
   const moveToProject = useMutation(api.entries.moveToProject)
+  const reorderEntries = useMutation(api.entries.reorderEntries)
   const [search, setSearch] = useState('')
   const [publishingPending, setPublishingPending] = useState(false)
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<Id<'entries'>>>(new Set())
   const [bulkBusy, setBulkBusy] = useState(false)
   const [showDone, setShowDone] = useState(false)
-  const [draggingEntry, setDraggingEntry] = useState<EntryCardData | null>(null)
+  const [draggingItem, setDraggingItem] = useState<{ title?: string } | null>(null)
 
   const mouseSensor = useSensor(MouseSensor, { activationConstraint: { distance: 8 } })
   const touchSensor = useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
@@ -53,8 +55,9 @@ export function Dashboard() {
     )).finally(() => setPublishingPending(false))
   }, [])
 
-  const projects = myEntries.filter(e => e.entryType === 'project')
-  const entries = myEntries.filter(e => e.entryType !== 'project' && !e.projectId)
+  const byManualOrder = (a: { taskOrder?: number }, b: { taskOrder?: number }) => (a.taskOrder ?? Infinity) - (b.taskOrder ?? Infinity)
+  const projects = myEntries.filter(e => e.entryType === 'project').sort(byManualOrder)
+  const entries = myEntries.filter(e => e.entryType !== 'project' && !e.projectId).sort(byManualOrder)
   const active = entries.filter(e => ['open', 'matched', 'booked', 'in_progress'].includes(e.status ?? '')).length
   const done = entries.filter(e => e.status === 'done').length
   const filteredEntries = entries.filter(e => (e.title ?? '').toLowerCase().includes(search.toLowerCase()))
@@ -104,15 +107,37 @@ export function Dashboard() {
   }
 
   const handleDragStart = (event: DragStartEvent) => {
-    const found = filteredEntries.find(e => e._id === event.active.id)
-    if (found) setDraggingEntry(found)
+    const found = filteredEntries.find(e => e._id === event.active.id) ?? filteredProjects.find(e => e._id === event.active.id)
+    setDraggingItem(found ? { title: found.title } : null)
   }
 
   const handleDragEnd = (event: DragEndEvent) => {
-    setDraggingEntry(null)
+    setDraggingItem(null)
     const { active, over } = event
     if (!over || active.id === over.id) return
-    moveToProject({ id: active.id as Id<'entries'>, projectId: over.id as Id<'entries'> }).catch(() => null)
+    const activeType = active.data.current?.type
+    const overType = over.data.current?.type
+
+    if (activeType === 'entry' && overType === 'project') {
+      // dropped an entry onto a project card — move it in, doesn't touch order
+      moveToProject({ id: active.id as Id<'entries'>, projectId: over.id as Id<'entries'> }).catch(() => null)
+      return
+    }
+    if (activeType === 'entry' && overType === 'entry') {
+      const oldIndex = activeFilteredEntries.findIndex(e => e._id === active.id)
+      const newIndex = activeFilteredEntries.findIndex(e => e._id === over.id)
+      if (oldIndex === -1 || newIndex === -1) return
+      const reordered = arrayMove(activeFilteredEntries, oldIndex, newIndex)
+      reorderEntries({ orderedIds: reordered.map(e => e._id) }).catch(() => null)
+      return
+    }
+    if (activeType === 'project' && overType === 'project') {
+      const oldIndex = filteredProjects.findIndex(p => p._id === active.id)
+      const newIndex = filteredProjects.findIndex(p => p._id === over.id)
+      if (oldIndex === -1 || newIndex === -1) return
+      const reordered = arrayMove(filteredProjects, oldIndex, newIndex)
+      reorderEntries({ orderedIds: reordered.map(p => p._id) }).catch(() => null)
+    }
   }
 
   return (
@@ -199,13 +224,15 @@ export function Dashboard() {
                   </div>
                 )}
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {activeFilteredEntries.map(e => (
-                  <EntryCard key={e._id} entry={e} selectMode={selectMode} selected={selectedIds.has(e._id)}
-                    onToggle={() => toggleSelected(e._id)} onOpen={() => navigate(`/app/entries/${e._id}`)}
-                    onOpenFirst={id => navigate(`/app/entries/${id}`)} dragDisabled={selectMode} />
-                ))}
-              </div>
+              <SortableContext items={activeFilteredEntries.map(e => e._id)} strategy={verticalListSortingStrategy}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {activeFilteredEntries.map(e => (
+                    <EntryCard key={e._id} entry={e} selectMode={selectMode} selected={selectedIds.has(e._id)}
+                      onToggle={() => toggleSelected(e._id)} onOpen={() => navigate(`/app/entries/${e._id}`)}
+                      onOpenFirst={id => navigate(`/app/entries/${id}`)} dragDisabled={selectMode} />
+                  ))}
+                </div>
+              </SortableContext>
 
               {doneFilteredEntries.length > 0 && (
                 <div style={{ marginTop: 16 }}>
@@ -236,16 +263,18 @@ export function Dashboard() {
           {filteredProjects.length > 0 && (
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Проєкти</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {filteredProjects.map(e => {
-                  const m = matchCounts[e._id] as { count: number; first?: { _id: string; title: string; city?: string } } | undefined
-                  const count = m?.count ?? 0
-                  return (
-                    <ProjectCard key={e._id} id={e._id} title={e.title} city={e.city} count={count}
-                      onOpen={() => navigate(`/app/entries/${e._id}`)} />
-                  )
-                })}
-              </div>
+              <SortableContext items={filteredProjects.map(e => e._id)} strategy={verticalListSortingStrategy}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {filteredProjects.map(e => {
+                    const m = matchCounts[e._id] as { count: number; first?: { _id: string; title: string; city?: string } } | undefined
+                    const count = m?.count ?? 0
+                    return (
+                      <ProjectCard key={e._id} id={e._id} title={e.title} city={e.city} count={count}
+                        onOpen={() => navigate(`/app/entries/${e._id}`)} />
+                    )
+                  })}
+                </div>
+              </SortableContext>
             </div>
           )}
         </div>
@@ -254,13 +283,13 @@ export function Dashboard() {
       <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} } @keyframes dotPulse { 0%,80%,100%{transform:scale(.6);opacity:.4} 40%{transform:scale(1);opacity:1} }`}</style>
     </div>
     <DragOverlay dropAnimation={null}>
-      {draggingEntry && (
+      {draggingItem && (
         <div style={{
           background: '#fff', borderRadius: 16, border: '1.5px solid var(--accent)', padding: '14px 16px',
           boxShadow: '0 8px 24px rgba(0,0,0,.18)', fontSize: 14, fontWeight: 700, color: 'var(--text-primary)',
           maxWidth: 320, opacity: 0.95,
         }}>
-          {draggingEntry.title}
+          {draggingItem.title}
         </div>
       )}
     </DragOverlay>
@@ -271,12 +300,13 @@ export function Dashboard() {
 function ProjectCard({ id, title, city, count, onOpen }: {
   id: Id<'entries'>; title?: string; city?: string; count: number; onOpen: () => void
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id })
+  const { attributes, listeners, setNodeRef, isOver, isDragging } = useSortable({ id, data: { type: 'project' } })
   return (
-    <div ref={setNodeRef} onClick={onOpen}
+    <div ref={setNodeRef} {...listeners} {...attributes} onClick={onOpen}
       style={{
         background: isOver ? 'rgba(239,159,39,.08)' : '#fff', borderRadius: 16, cursor: 'pointer', overflow: 'hidden',
         border: isOver ? '1.5px dashed var(--accent)' : '1.5px solid var(--border)', transition: 'background .1s, border-color .1s',
+        opacity: isDragging ? 0.35 : 1, touchAction: 'none',
       }}>
       <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
         <span style={{ fontSize: 20, flexShrink: 0 }}>📁</span>
@@ -337,7 +367,7 @@ function EntryCard({ entry: e, selectMode, selected, onToggle, onOpen, onOpenFir
   const first = !muted && hasAi && e.aiMatchFirstId
     ? { _id: e.aiMatchFirstId, title: e.aiMatchFirstTitle ?? '', city: e.aiMatchFirstCity }
     : undefined
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: e._id, disabled: dragDisabled })
+  const { attributes, listeners, setNodeRef, isDragging } = useSortable({ id: e._id, data: { type: 'entry' }, disabled: dragDisabled })
 
   return (
     <div ref={setNodeRef} {...listeners} {...attributes}

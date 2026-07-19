@@ -289,9 +289,10 @@ export const listTasks = query({
   },
 })
 
-// Persists manual drag-to-reorder within a project's task list. Only touches
-// taskOrder, leaving AI-inferred dependsOnTaskIds untouched.
-export const reorderTasks = mutation({
+// Persists manual drag-to-reorder within any sibling list the caller passes — tasks
+// inside a project, standalone entries on the dashboard, or the projects list itself.
+// Only touches taskOrder, leaving AI-inferred dependsOnTaskIds untouched.
+export const reorderEntries = mutation({
   args: { orderedIds: v.array(v.id("entries")) },
   handler: async (ctx, { orderedIds }) => {
     const userId = await getAuthUserId(ctx)

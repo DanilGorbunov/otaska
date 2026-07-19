@@ -77,7 +77,7 @@ export function EntryDetail() {
   const updateEntry = useMutation(api.entries.update)
   const removeEntry = useMutation(api.entries.remove)
   const moveToProject = useMutation(api.entries.moveToProject)
-  const reorderTasks = useMutation(api.entries.reorderTasks)
+  const reorderEntries = useMutation(api.entries.reorderEntries)
   const createTask = useMutation(api.entries.createTask)
   const publishTask = useMutation(api.entries.publishTask)
   const sendProposal = useMutation(api.proposals.create)
@@ -314,7 +314,7 @@ export function EntryDetail() {
       const overIndex = list.findIndex(t => t._id === over.id)
       if (activeIndex === -1 || overIndex === -1) continue
       const reordered = arrayMove(list, activeIndex, overIndex)
-      reorderTasks({ orderedIds: reordered.map(t => t._id) }).catch(() => null)
+      reorderEntries({ orderedIds: reordered.map(t => t._id) }).catch(() => null)
       return
     }
   }
