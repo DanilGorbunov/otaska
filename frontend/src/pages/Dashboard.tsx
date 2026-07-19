@@ -229,7 +229,7 @@ export function Dashboard() {
                   {activeFilteredEntries.map(e => (
                     <EntryCard key={e._id} entry={e} selectMode={selectMode} selected={selectedIds.has(e._id)}
                       onToggle={() => toggleSelected(e._id)} onOpen={() => navigate(`/app/entries/${e._id}`)}
-                      onOpenFirst={id => navigate(`/app/entries/${id}`)} dragDisabled={selectMode} />
+                      dragDisabled={selectMode} />
                   ))}
                 </div>
               </SortableContext>
@@ -353,20 +353,14 @@ interface EntryCardData {
   budgetMin?: number
   budgetMax?: number
   aiMatchCount?: number
-  aiMatchFirstId?: string
-  aiMatchFirstTitle?: string
-  aiMatchFirstCity?: string
 }
 
-function EntryCard({ entry: e, selectMode, selected, onToggle, onOpen, onOpenFirst, muted, dragDisabled }: {
+function EntryCard({ entry: e, selectMode, selected, onToggle, onOpen, muted, dragDisabled }: {
   entry: EntryCardData; selectMode: boolean; selected: boolean; onToggle: () => void; onOpen: () => void
-  onOpenFirst?: (id: string) => void; muted?: boolean; dragDisabled?: boolean
+  muted?: boolean; dragDisabled?: boolean
 }) {
   const hasAi = e.aiMatchCount != null
   const count = e.aiMatchCount ?? 0
-  const first = !muted && hasAi && e.aiMatchFirstId
-    ? { _id: e.aiMatchFirstId, title: e.aiMatchFirstTitle ?? '', city: e.aiMatchFirstCity }
-    : undefined
   const { attributes, listeners, setNodeRef, isDragging } = useSortable({ id: e._id, data: { type: 'entry' }, disabled: dragDisabled })
 
   return (
@@ -415,17 +409,6 @@ function EntryCard({ entry: e, selectMode, selected, onToggle, onOpen, onOpenFir
               : <span style={{ fontSize: 11, color: 'var(--text-dim)', flexShrink: 0 }}>0 збігів</span>
         }
       </div>
-      {first && (
-        <div onClick={ev => { ev.stopPropagation(); selectMode ? onToggle() : onOpenFirst?.(first._id) }}
-          style={{ borderTop: '1px solid #FDE68A', background: 'rgba(239,159,39,.06)', padding: '9px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />
-          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {first.title}
-          </span>
-          {first.city && <span style={{ fontSize: 11, color: 'var(--text-secondary)', flexShrink: 0 }}>📍 {first.city}</span>}
-          <svg width="5" height="9" viewBox="0 0 7 13" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round"><path d="M1 1.5l5 5-5 5"/></svg>
-        </div>
-      )}
     </div>
   )
 }
